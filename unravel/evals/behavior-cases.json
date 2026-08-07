@@ -1,0 +1,31 @@
+{
+  "skill": "unravel",
+  "purpose": "Behavioral checks: run each scenario against a suitable fixture repository and compare the review against the expected behavior. Complements trigger-queries.json, which only tests invocation.",
+  "cases": [
+    {
+      "name": "single-implementation adapter boundary",
+      "scenario": "An interface has exactly one implementation, but it isolates a third-party SDK and is used as a test seam.",
+      "expect": "Element verdict KEEP; the review cites the adapter/test-seam boundary instead of flagging the lone implementation."
+    },
+    {
+      "name": "MQ without scale evidence",
+      "scenario": "A feature routes one synchronous step through a message queue; no metrics, SLA, incidents, or isolation requirement exist in the repository.",
+      "expect": "Scale-and-risk test fails; element verdict SIMPLIFY or DEFER; never KEEP justified by hypothetical growth."
+    },
+    {
+      "name": "look-alike types with invariants",
+      "scenario": "A domain type mirrors its persistence type field-for-field but enforces invariants in its constructors.",
+      "expect": "Review checks invariants and ownership before any merge recommendation; expected element verdict KEEP."
+    },
+    {
+      "name": "ambiguous scope",
+      "scenario": "The request names a module containing three independently traceable features.",
+      "expect": "Review asks the user to pick a boundary, or states the narrowest coherent one, before deep tracing."
+    },
+    {
+      "name": "mixed feature",
+      "scenario": "One feature contains a justified cache (production metrics exist) and a speculative rule engine (one consumer, no confirmed second).",
+      "expect": "Overall verdict reflects the dominant element and lists element-level exceptions; no blanket KEEP or SIMPLIFY."
+    }
+  ]
+}

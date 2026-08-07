@@ -1,0 +1,23 @@
+{
+  "skill": "unravel",
+  "positive": [
+    "Review this coupon feature and tell me whether it is over-engineered.",
+    "Read this codebase feature and assess whether the factory and strategy layers are justified.",
+    "梳理一下这个下单 feature，看看有没有过度设计，不要改代码。",
+    "这个 Spring Boot 功能为什么要经过 Command、Manager、Strategy、Repository？帮我判断复杂度是否必要。",
+    "Trace the payment flow and identify premature abstractions or speculative future-proofing.",
+    "看看这个模块的 DTO、BO、DO、VO 转换是不是太多了，只分析不要重构。",
+    "Does this feature really need MQ, cache, and distributed locks? Review the repository evidence.",
+    "Assess whether this plugin registry is warranted by real variants in the codebase."
+  ],
+  "negative": [
+    "Fix this NullPointerException.",
+    "Refactor this class to use the strategy pattern.",
+    "Implement the missing endpoint.",
+    "Write unit tests for this service.",
+    "Explain what the factory pattern is.",
+    "Optimize this SQL query.",
+    "Rename these Java classes.",
+    "Create a new microservice for payments."
+  ]
+}
