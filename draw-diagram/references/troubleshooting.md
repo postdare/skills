@@ -37,6 +37,7 @@ Geometry diagnostics come from `assets/check.js`; renderer routes and badge comp
 | Label reads as belonging to a neighbouring message | Labels are placed by `at` alone. Centre each one between its own two lifelines, 16–20 above its own line, and keep neighbouring messages ~46 apart. |
 | Self-message loop overlaps a neighbour or its own label | Increase the spacing around it, reduce `bend` (default 44), or move the label to the right of the loop. |
 | A participant seems missing from a later frame | Never delete an unused participant — keep it as a `dim: true` gray box so the columns stay stable across frames. |
+| Responses come back looking like requests | Set `kind: "reply"` (dashed, open arrowhead) on the return arrows in **both** `content.edges` and `diagram.arrows`; a missing kind mismatches in the semantic check. |
 
 ## Edge labels
 

@@ -87,6 +87,7 @@ Rules that keep a sequence frame readable:
 
 - **The message `y` is the timeline.** Number the messages in source order and place them strictly increasing; ~46 units apart leaves room for a 14px label plus clearance.
 - **Anchor every message on lifelines** (`id@life:<y>`), never on box edges — a box anchor makes the arrow leave the participant header instead of the timeline.
+- **Requests are `flow`, responses are `reply`.** Solid line + filled arrowhead going out, dashed line + open arrowhead coming back, is the UML interaction convention and it makes the request/response pairing readable at a glance. A message that is itself asynchronous (fire-and-forget) is `async` (solid line, open arrowhead). Set the same `kind` in `content.edges` and `diagram.arrows`.
 - **Labels sit 16–20 above their own line, centred between the two lifelines**, placed explicitly with `at`. A label must stay ≥3px clear of every arrow path, its own included.
 - **Crossing lifelines is expected.** A message between non-adjacent participants crosses the ones in between; keep those participants in place rather than shortening the message.
 - **Keep the same lifelines in every frame.** Across related frames hold the participants in identical x columns, and keep a participant this phase does not use as a `dim: true` gray box instead of deleting it — otherwise the reader must re-locate every participant between frames.

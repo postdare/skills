@@ -115,7 +115,12 @@ For `line`, `arc` and `elbow`, use `id@side[:ratio]`; side is `top`, `right`, `b
 - `arc` (also the default): cubic curve leaving/arriving along anchor directions. `c1/c2: [x,y]` override control points; `bend` scales automatic control reach.
 - `elbow`: rounded orthogonal route. `via: [[x,y],…]` supplies intermediate points; omitted via chooses a route from endpoint directions. `radius` overrides turn rounding.
 - `orbit`: follows the diagram's `ring` clockwise, clipping the curve at the endpoint box boundaries. Use bare IDs, not anchors. `counter: true` reverses direction. Place node centers on the ellipse.
-- `kind: "blocked"`: red dashed line and red arrowhead; otherwise flow styling.
+- `kind` selects the relation line style, and it is a **semantic** choice: the same value must appear in `content.edges`, because the checker compares kinds.
+  - `flow` (default) — synchronous call/request: solid line, filled arrowhead.
+  - `async` — asynchronous message: solid line, **open** arrowhead.
+  - `reply` — return/response: **dashed** line, **open** arrowhead.
+  - `blocked` — blocked/failed path: red dashed line, filled arrowhead.
+  The filled-vs-open arrowhead split between calls and returns follows UML interaction diagrams; use it whenever a diagram distinguishes requests from responses.
 - `label`: relationship text. `at: [x,y]` sets its position; omitted at offsets the path midpoint, without collision avoidance. `anchor` accepts `start`, `middle` or `end`. `side` reverses automatic midpoint offset when negative.
 - `size: "sm"`: illustration arrow, smaller stroke/marker and exempt from semantic edge comparison. Set this on each illustration arrow explicitly. Main arrows do not become illustrations merely because one endpoint is small.
 

@@ -23,6 +23,16 @@
     ok: { fill: '#18a058', glyph: '✓', ink: '#fff', dy: -0.5 },
     warn: { fill: '#f5a524', glyph: '?', ink: '#1a1a1a', dy: -0.3 }
   };
+  // 关系线型按语义选：flow 同步/调用（实线实心箭头）、async 异步（实线开放箭头）、
+  // reply 返回/响应（虚线开放箭头，虚线样式在 diagram.css）、blocked 阻断失败（红色虚线）。
+  // 同步用实心三角、异步与返回用开放箭头，是 UML 交互图的通行画法。
+  const heads = {
+    flow: { color: '#111', open: false },
+    async: { color: '#111', open: true },
+    reply: { color: '#111', open: true },
+    blocked: { color: '#e0245e', open: false }
+  };
+  const arrowKinds = new Set(Object.keys(heads));
   const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
 
   // 主节点外形：rect（默认，圆角由 r 控制）、pill（胶囊，两端半圆）、diamond（菱形，判断）、ellipse（椭圆，起止）。
@@ -228,10 +238,12 @@
     const svg = element('svg', { viewBox: `0 0 ${width} ${height}`, xmlns: svgNS, class: 'slide', role: 'img' });
     if (title) element('title', {}, svg).textContent = title;
     const defs = element('defs', {}, svg);
-    for (const [kind, color] of [['flow', '#111'], ['blocked', '#e0245e']]) {
+    for (const [kind, head] of Object.entries(heads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
         const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '11', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
-        element('path', { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: color }, marker);
+        element('path', head.open
+          ? { d: 'M 0.5 1 L 11.5 6 L 0.5 11', fill: 'none', stroke: head.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }
+          : { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: head.color }, marker);
       }
     }
     const shadow = element('filter', { id: `${prefix}-shadow`, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
@@ -293,7 +305,7 @@
     }
     for (const arrow of slide.arrows || []) {
       const small = arrow.size === 'sm';
-      const kind = arrow.kind === 'blocked' ? 'blocked' : 'flow';
+      const kind = arrowKinds.has(arrow.kind) ? arrow.kind : 'flow';
       const path = element('path', {
         d: route(shapes, arrow, slide.ring, lifelines), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
         'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`, opacity: arrow.dim ? 0.4 : null
