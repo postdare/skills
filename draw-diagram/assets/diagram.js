@@ -2,6 +2,8 @@
   'use strict';
   // Fixed-geometry diagram renderer; routing uses explicit anchors and control points.
   // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
+  // 时序风格：diagram.lifelines 声明节点生命线（虚线，纯装饰），连线用「id@life:y」锚在生命线高度上；
+  // 两条生命线之间的消息默认走直线，同一条生命线上的两端自动画成自调用环。
   // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
   // Bright fills keep black labels legible; assign colors consistently by concept.
@@ -104,11 +106,19 @@
     });
     return node;
   }
-  function anchor(shapes, reference) {
+  function anchor(shapes, reference, lifelines = new Map()) {
     const [id, rest = 'right'] = reference.split('@');
     const [side, ratioText] = rest.split(':');
     const shape = shapes.get(id);
     if (!shape) throw new Error(`连线引用了不存在的框：${id}`);
+    // @life:<y>：落在该节点生命线的指定高度上。方向不固定，由 route 依另一端（或自调用）补齐。
+    if (side === 'life') {
+      const line = lifelines.get(id);
+      if (!line) throw new Error(`节点没有声明生命线，无法用 @life 锚点：${reference}`);
+      const y = Number(ratioText);
+      if (!Number.isFinite(y)) throw new Error(`@life 锚点要写成 id@life:y：${reference}`);
+      return { point: { x: line.x, y }, direction: null, life: true };
+    }
     const ratio = ratioText === undefined ? 0.5 : Number(ratioText);
     const direction = sides[side];
     const target = side === 'top' || side === 'bottom'
@@ -149,16 +159,27 @@
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
   // 箭头尖端与框边留 3px，出发端贴边
-  function route(shapes, arrow, ring) {
+  function route(shapes, arrow, ring, lifelines = new Map()) {
     if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 3, arrow.counter);
-    const start = anchor(shapes, arrow.from);
-    const end = anchor(shapes, arrow.to);
+    const start = anchor(shapes, arrow.from, lifelines);
+    const end = anchor(shapes, arrow.to, lifelines);
+    // 生命线锚点自身没有固定朝向：取「指向另一端」的水平方向；自调用（同一条生命线）向右出、向左回。
+    const self = Boolean(start.life && end.life && start.point.x === end.point.x);
+    if (!start.direction) start.direction = self ? { x: 1, y: 0 } : { x: Math.sign(end.point.x - start.point.x) || 1, y: 0 };
+    if (!end.direction) end.direction = self ? { x: 1, y: 0 } : { x: Math.sign(start.point.x - end.point.x) || 1, y: 0 };
     const gap = arrow.size === 'sm' ? 1.5 : 3;
     const from = start.point;
     const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
     const inward = { x: -end.direction.x, y: -end.direction.y };
-    if (arrow.shape === 'line') return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-    if (arrow.shape === 'elbow') {
+    // 自调用：向右绕一个圆角矩形环再回到同一条生命线
+    if (self && !arrow.via) {
+      const reachX = from.x + (arrow.bend ?? 44);
+      return roundedPath([from, { x: reachX, y: from.y }, { x: reachX, y: to.y }, to], 10);
+    }
+    // 两条生命线之间的消息默认走直线（时序风格），仍可用 elbow/arc 覆盖
+    const kind = arrow.shape || (start.life && end.life ? 'line' : 'arc');
+    if (kind === 'line') return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+    if (kind === 'elbow') {
       const points = [from, ...(arrow.via || []).map(([x, y]) => ({ x, y }))];
       if (!arrow.via) {
         const horizontalOut = start.direction.x !== 0;
@@ -220,11 +241,26 @@
     for (const group of slide.groups || []) shapes.set(group.id, group);
     for (const box of slide.boxes || []) shapes.set(box.id, box);
 
+    // 生命线（时序风格）：从节点底边向下的虚线，纯装饰，只用于给 @life:<y> 锚点定位。
+    const lifelines = new Map();
+    for (const line of slide.lifelines || []) {
+      const shape = shapes.get(line.of);
+      if (!shape) throw new Error(`生命线引用了不存在的框：${line.of}`);
+      if (lifelines.has(line.of)) throw new Error(`同一节点只能有一条生命线：${line.of}`);
+      const x = shape.x + shape.w * (line.at === undefined ? 0.5 : Number(line.at));
+      lifelines.set(line.of, { x, y1: boundary(shape, { x, y: shape.y + shape.h }).y, y2: line.to ?? height - 24, end: line.end });
+    }
+
     for (const group of slide.groups || []) {
       const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
       element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
       if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
       if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+    }
+    const lifeLayer = element('g', { class: 'slide-lifelines' }, svg);
+    for (const line of lifelines.values()) {
+      element('path', { d: `M ${line.x} ${line.y1} L ${line.x} ${line.y2}`, class: 'slide-lifeline' }, lifeLayer);
+      if (line.end) element('path', { d: `M ${line.x - 7} ${line.y2} L ${line.x + 7} ${line.y2}`, class: 'slide-lifeline-end' }, lifeLayer);
     }
     const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
     const boxLayer = element('g', { class: 'slide-boxes' }, svg);
@@ -259,7 +295,7 @@
       const small = arrow.size === 'sm';
       const kind = arrow.kind === 'blocked' ? 'blocked' : 'flow';
       const path = element('path', {
-        d: route(shapes, arrow, slide.ring), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
+        d: route(shapes, arrow, slide.ring, lifelines), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
         'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`, opacity: arrow.dim ? 0.4 : null
       }, arrowLayer);
       if (arrow.label) {
@@ -287,8 +323,9 @@
     boxes: [...all.boxes, ...(part.boxes || [])],
     arrows: [...all.arrows, ...(part.arrows || [])],
     groups: [...all.groups, ...(part.groups || [])],
+    lifelines: [...all.lifelines, ...(part.lifelines || [])],
     notes: [...all.notes, ...(part.notes || [])]
-  }), { boxes: [], arrows: [], groups: [], notes: [] });
+  }), { boxes: [], arrows: [], groups: [], lifelines: [], notes: [] });
 
   window.Diagram = { render, fills, merge };
 })();

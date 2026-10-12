@@ -14,3 +14,6 @@
 .slide-arrow-label--blocked { fill: #c41d4f; }
 .slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }
 .slide-note--warn { fill: #c41d4f; font-weight: 700; }
+/* 生命线（时序风格）与结束短杠：压暗虚线，只做时间轴示意，不表示关系强度。 */
+.slide-lifeline { fill: none; stroke: #111; stroke-width: 1.5; stroke-dasharray: 7 7; opacity: .35; }
+.slide-lifeline-end { fill: none; stroke: #111; stroke-width: 1.5; opacity: .35; }

@@ -24,6 +24,8 @@ description: 图解：绘制流程、循环、分支、分组和状态关系图�
 
 选择版式时读取 [references/layouts.md](references/layouts.md)，从 `assets/templates.js` 复制匹配关系的模板。模板只提供构图起点，文字、状态与关系仍以语义真值为准；复杂嵌套和内外循环沿用该参考中的组合方式。
 
+消息按时间依次往返的关系（协议握手、请求/应答、重试）改用时序风格：声明 `diagram.lifelines` 生命线，消息用 `id@life:y` 锚在生命线上，自上而下即时间顺序；写法与规则见 [references/layouts.md](references/layouts.md) 的 Sequence style 一节和 [references/frame-format.md](references/frame-format.md)。
+
 每帧写一句「主要关系 + 采用的构图」。相邻状态帧保持同一概念的位置与颜色稳定，让变化本身可见。
 
 ### 文档与图稿格式

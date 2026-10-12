@@ -27,6 +27,17 @@ Geometry diagnostics come from `assets/check.js`; renderer routes and badge comp
 | Unknown endpoint throws while rendering | Match IDs against both boxes and groups. Anchor references use `id@side:ratio`; orbit references use only the ID. |
 | Multiple inline SVGs use the wrong marker or shadow | Preserve renderer-generated unique marker/filter IDs when exporting or embedding; copying IDs between SVGs defeats their isolation. |
 
+## Sequence frames (lifelines)
+
+| Diagnostic / symptom | Repair |
+| --- | --- |
+| Rendering throws `节点没有声明生命线，无法用 @life 锚点` | Declare the lifeline first: add `{ of: '<node id>', to: <y> }` to `diagram.lifelines`. `of` must be an existing box/group id. |
+| Rendering throws `同一节点只能有一条生命线` | A node has one time axis only. Delete the duplicate entry, or split that participant into two nodes if the source really describes two. |
+| A message looks like it leaves the participant header instead of the timeline | The endpoint used a box anchor (`@right`/`@bottom`); sequence messages must use `@life:<y>`. |
+| Label reads as belonging to a neighbouring message | Labels are placed by `at` alone. Centre each one between its own two lifelines, 16–20 above its own line, and keep neighbouring messages ~46 apart. |
+| Self-message loop overlaps a neighbour or its own label | Increase the spacing around it, reduce `bend` (default 44), or move the label to the right of the loop. |
+| A participant seems missing from a later frame | Never delete an unused participant — keep it as a `dim: true` gray box so the columns stay stable across frames. |
+
 ## Edge labels
 
 Automatic midpoint placement offsets a label but does not avoid other content. Use explicit `at` coordinates for deliberate composition.

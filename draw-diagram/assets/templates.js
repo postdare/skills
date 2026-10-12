@@ -155,5 +155,26 @@ window.DIAGRAM_TEMPLATES = {
       { from: 'l2@right', to: 'r2@left', shape: 'line', label: '评估', at: [360, 208] },
       { from: 'l3@right', to: 'r3@left', shape: 'line' }
     ]
+  },
+  // 时序 · 四个参与者：消息锚在生命线上，自上而下即时间顺序
+  sequence: {
+    boxes: [
+      { id: 'p1', x: 24, y: 32, w: 140, h: 54, fill: 'violet', label: '参与者 A' },
+      { id: 'p2', x: 200, y: 32, w: 140, h: 54, fill: 'sky', label: '参与者 B' },
+      { id: 'p3', x: 376, y: 32, w: 140, h: 54, fill: 'amber', label: '参与者 C' },
+      { id: 'p4', x: 552, y: 32, w: 140, h: 54, fill: 'pink', label: '参与者 D' }
+    ],
+    lifelines: [
+      { of: 'p1', to: 404, end: true },
+      { of: 'p2', to: 404, end: true },
+      { of: 'p3', to: 404, end: true },
+      { of: 'p4', to: 404, end: true }
+    ],
+    arrows: [
+      { from: 'p1@life:140', to: 'p2@life:140', label: '消息一', at: [182, 124] },
+      { from: 'p2@life:190', to: 'p3@life:190', label: '消息二', at: [358, 174] },
+      { from: 'p3@life:240', to: 'p1@life:240', label: '消息三', at: [358, 224] },
+      { from: 'p2@life:290', to: 'p2@life:340', bend: 70, label: '自处理', at: [305, 315] }
+    ]
   }
 };

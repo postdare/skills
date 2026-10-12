@@ -70,6 +70,30 @@ const diagram = Diagram.merge(DIAGRAM_TEMPLATES.ring4, illustration);
 
 For a true inner cycle with source-required nodes, use normal-size boxes and include every node/edge in content. Increase the canvas or simplify the outer cycle rather than shrinking business facts into an exempt illustration. These examples demonstrate composition; run the normal geometry and visual checks after adapting them.
 
+## Sequence style: participants over time
+
+Use it when the relationship is a **message exchange ordered in time** between fixed participants — protocol handshakes, request/response pairs, retry ladders. Time runs down the frame; each participant is a header box with a dashed lifeline, and every message is an arrow anchored to two lifelines.
+
+Start from `DIAGRAM_TEMPLATES.sequence` and replace its placeholders:
+
+```js
+const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
+  lifelines: [ { of: 'client', to: 420, end: true }, /* 一位参与者一行 */ ],
+  arrows: [ { from: 'client@life:150', to: 'authz@life:150', label: '① 请求', at: [372, 134] } ]
+});
+```
+
+Rules that keep a sequence frame readable:
+
+- **The message `y` is the timeline.** Number the messages in source order and place them strictly increasing; ~46 units apart leaves room for a 14px label plus clearance.
+- **Anchor every message on lifelines** (`id@life:<y>`), never on box edges — a box anchor makes the arrow leave the participant header instead of the timeline.
+- **Labels sit 16–20 above their own line, centred between the two lifelines**, placed explicitly with `at`. A label must stay ≥3px clear of every arrow path, its own included.
+- **Crossing lifelines is expected.** A message between non-adjacent participants crosses the ones in between; keep those participants in place rather than shortening the message.
+- **Keep the same lifelines in every frame.** Across related frames hold the participants in identical x columns, and keep a participant this phase does not use as a `dim: true` gray box instead of deleting it — otherwise the reader must re-locate every participant between frames.
+- **Self-messages** (`p@life:y1` → `p@life:y2`) loop to the right; leave ~50 of vertical room so the loop and its label clear their neighbours. A self-message that carries a label needs a wider loop — `bend: 70` — so the label fits inside it; the default 44 leaves no room and the label lands on the loop's vertical.
+- **Width:** four participants need roughly 940×400 and up; the default 720×450 canvas fits three comfortably.
+- Lifelines are decoration, never nodes: they carry no `content` entry, and the geometry checker ignores them (a message crossing a lifeline is not a defect).
+
 ## Composition rules
 
 - On the default canvas, leave at least 14 units around the outside. Main boxes usually need heights of 62–90 and at least 60 units between neighboring boxes.

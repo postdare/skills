@@ -54,6 +54,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `boxes` | array of boxes | Main semantic nodes or small illustrations |
 | `groups?` | array of groups | Framing containers that can also be semantic nodes |
 | `arrows` | array of arrows | Directed relationships |
+| `lifelines?` | array of `{of,to,at?,end?}` | Sequence-style dashed vertical guides under a node (decoration only, never a node) |
 | `ring?` | `{cx,cy,rx,ry}` | Shared elliptical route for `orbit` arrows; positive radii |
 | `notes?` | array of `{x,y,text,tone?,anchor?}` | Non-authoritative annotations; `tone: "warn"` adds emphasis |
 | `w?`, `h?` | numbers | Canvas dimensions |
@@ -117,6 +118,24 @@ For `line`, `arc` and `elbow`, use `id@side[:ratio]`; side is `top`, `right`, `b
 - `kind: "blocked"`: red dashed line and red arrowhead; otherwise flow styling.
 - `label`: relationship text. `at: [x,y]` sets its position; omitted at offsets the path midpoint, without collision avoidance. `anchor` accepts `start`, `middle` or `end`. `side` reverses automatic midpoint offset when negative.
 - `size: "sm"`: illustration arrow, smaller stroke/marker and exempt from semantic edge comparison. Set this on each illustration arrow explicitly. Main arrows do not become illustrations merely because one endpoint is small.
+
+### Lifelines and sequence-style messages
+
+`lifelines` draws a dashed vertical guide under a node — the time axis of a sequence diagram. Each entry is `{of, to, at?, end?}`: `of` is the node id, `to` is the y where the guide stops (default `h - 24`), `at` is the ratio along that node's width (default 0.5), and `end: true` adds a short closing bar. A node carries at most one lifeline, and a lifeline **is not a node**: it never enters `content`, never affects semantic matching, and is exempt from geometry collision rules (a message crossing another participant's lifeline is normal and intended).
+
+Messages between lifelines anchor with `id@life:<y>`:
+
+```json
+{ "from": "client@life:240", "to": "authz@life:240", "label": "5 用码换令牌", "at": [560, 224] }
+```
+
+- The anchor sits on that node's lifeline at height `y`; the node must already declare a lifeline, otherwise rendering throws.
+- The direction is not fixed by the anchor but taken from the other endpoint, so a message always points into its target's lifeline with a 3px tip gap.
+- Two life anchors default to a straight horizontal `line`; declare `elbow`/`arc` explicitly to override.
+- Both endpoints on the **same** lifeline become a self-message: the route leaves right, runs down and returns with the arrowhead landing on the lifeline. `bend` sets the loop width (default 44; a labelled self-message needs ~70 so the label fits inside the loop instead of on its vertical).
+- Semantic matching strips everything after `@`, so `owner@life:240` still counts as node `owner`.
+
+Keep message `y` values in time order and about 46+ apart so labels fit between neighbours. Do not drop a participant just to shorten a message that spans non-adjacent lifelines.
 
 Illustrations explain internal mechanics without adding authoritative relationships: mark their boxes and arrows `size: "sm"`. Main nodes, including disconnected ones, remain in content. Keep helpers and decorations from presenting new business facts not present in the source.
 
