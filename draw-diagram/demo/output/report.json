@@ -1,0 +1,62 @@
+{
+  "url": "http://127.0.0.1:8891/preview.html",
+  "passed": true,
+  "viewports": [
+    {
+      "width": 1200,
+      "frames": 3,
+      "drawn": 3,
+      "errors": 0,
+      "hints": 0,
+      "items": [
+        {
+          "key": "release-flow",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "recovery-loop",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "service-boundaries",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        }
+      ],
+      "scriptErrors": []
+    },
+    {
+      "width": 390,
+      "frames": 3,
+      "drawn": 3,
+      "errors": 0,
+      "hints": 0,
+      "items": [
+        {
+          "key": "release-flow",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "recovery-loop",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "service-boundaries",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        }
+      ],
+      "scriptErrors": []
+    }
+  ]
+}

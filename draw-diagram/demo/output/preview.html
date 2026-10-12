@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交付与运营 · 通用图解 Demo</title><style>
+body { margin: 0; background: #f4f5f7; color: #20252c; font: 16px/1.6 system-ui, sans-serif; }
+main { max-width: 960px; margin: 32px auto; padding: 0 16px; }
+h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
+.preview-frame { margin: 28px 0; }
+.preview-slide { max-width: 720px; border: 1px solid #d4d8df; border-radius: 12px; overflow: hidden; }
+.preview-check { padding-left: 24px; font-size: 14px; }
+[data-level=error] { color: #a92c3b; } [data-level=ok] { color: #17634a; }
+@media (max-width: 500px) { main { margin: 16px auto; padding: 0 12px; } }
+
+/* Diagram styles: white canvas, bright fills, bold labels, solid directional arrows. */
+.slide { display: block; width: 100%; height: auto; background: #fff; font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Microsoft YaHei", sans-serif; }
+.slide text { dominant-baseline: central; text-anchor: middle; }
+.slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }
+.slide-box--sm .slide-box-label { font-size: 9.5px; }
+.slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
+.slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }
+.slide-badge { font-size: 13px; font-weight: 800; }
+.slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }
+.slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }
+.slide-arrow--sm { stroke-width: 1.6; }
+.slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }
+.slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }
+.slide-arrow-label--blocked { fill: #c41d4f; }
+.slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }
+.slide-note--warn { fill: #c41d4f; font-weight: 700; }
+</style>
+<script>window.__diagramErrors = []; addEventListener('error', e => __diagramErrors.push(e.message));</script>
+<script>(() => {
+  'use strict';
+  // Fixed-geometry diagram renderer; routing uses explicit anchors and control points.
+  // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
+  const svgNS = 'http://www.w3.org/2000/svg';
+  // Bright fills keep black labels legible; assign colors consistently by concept.
+  const fills = {
+    mint: '#00e5cc', mintSoft: '#84f0dc', mintPale: '#c9f7ec',
+    pink: '#ff3d9e', pinkSoft: '#ff80c4', pinkPale: '#ffd0e8',
+    violet: '#a98bff', violetSoft: '#cbb9ff', violetPale: '#ebe4ff',
+    sky: '#3fb8ff', skySoft: '#93d6ff', skyPale: '#d6efff',
+    amber: '#ffb020', amberSoft: '#ffd27a', amberPale: '#ffefcc',
+    gray: '#e4e8eb'
+  };
+  // dy 是字形墨迹中心相对圆心的修正量：`dominant-baseline: central` 对齐的是 em 盒中心，
+  // 而 × ✓ ? 的墨迹在 em 盒里并不居中（800 13px PingFang/Helvetica 用 canvas measureText 实测：
+  // 墨迹中心分别比 em 中心低 1.6 / 0.5 / 0.3px），不修正时 × 明显偏下。
+  const badges = {
+    error: { fill: '#e5484d', glyph: '×', ink: '#fff', dy: -1.6 },
+    ok: { fill: '#18a058', glyph: '✓', ink: '#fff', dy: -0.5 },
+    warn: { fill: '#f5a524', glyph: '?', ink: '#1a1a1a', dy: -0.3 }
+  };
+  const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
+
+  function element(name, attributes = {}, parent) {
+    const node = document.createElementNS(svgNS, name);
+    for (const [key, value] of Object.entries(attributes)) if (value !== undefined && value !== null) node.setAttribute(key, value);
+    if (parent) parent.append(node);
+    return node;
+  }
+  function text(parent, x, y, content, attributes) {
+    const node = element('text', { x, y, ...attributes }, parent);
+    const lines = String(content).split('\n');
+    lines.forEach((line, index) => {
+      const span = element('tspan', { x, dy: index === 0 ? `${-(lines.length - 1) * 0.6}em` : '1.2em' }, node);
+      span.textContent = line;
+    });
+    return node;
+  }
+  function anchor(shapes, reference) {
+    const [id, rest = 'right'] = reference.split('@');
+    const [side, ratioText] = rest.split(':');
+    const shape = shapes.get(id);
+    if (!shape) throw new Error(`连线引用了不存在的框：${id}`);
+    const ratio = ratioText === undefined ? 0.5 : Number(ratioText);
+    const direction = sides[side];
+    const point = side === 'top' || side === 'bottom'
+      ? { x: shape.x + shape.w * ratio, y: side === 'top' ? shape.y : shape.y + shape.h }
+      : { x: side === 'left' ? shape.x : shape.x + shape.w, y: shape.y + shape.h * ratio };
+    return { point, direction };
+  }
+  function roundedPath(points, radius) {
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 1; index < points.length - 1; index++) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const next = points[index + 1];
+      const inbound = Math.hypot(current.x - previous.x, current.y - previous.y) || 1;
+      const outbound = Math.hypot(next.x - current.x, next.y - current.y) || 1;
+      const trim = Math.min(radius, inbound / 2, outbound / 2);
+      const entry = { x: current.x - (current.x - previous.x) / inbound * trim, y: current.y - (current.y - previous.y) / inbound * trim };
+      const exit = { x: current.x + (next.x - current.x) / outbound * trim, y: current.y + (next.y - current.y) / outbound * trim };
+      d += ` L ${entry.x} ${entry.y} Q ${current.x} ${current.y} ${exit.x} ${exit.y}`;
+    }
+    const last = points[points.length - 1];
+    return `${d} L ${last.x} ${last.y}`;
+  }
+  // orbit：沿整帧共用的环轨（椭圆 ring）顺时针走，自动在两框边界处截断——任意节点数的环都顺
+  function orbit(ring, from, to, gap, counter) {
+    const angleOf = box => Math.atan2((box.y + box.h / 2 - ring.cy) / ring.ry, (box.x + box.w / 2 - ring.cx) / ring.rx);
+    const start = angleOf(from);
+    const sign = counter ? -1 : 1;
+    let span = (angleOf(to) - start) * sign;
+    while (span <= 0) span += Math.PI * 2;
+    const inside = (point, box, margin) => point.x > box.x - margin && point.x < box.x + box.w + margin && point.y > box.y - margin && point.y < box.y + box.h + margin;
+    const steps = Math.ceil(span / (Math.PI / 720));
+    const points = [];
+    for (let index = 0; index <= steps; index++) {
+      const angle = start + sign * span * index / steps;
+      const point = { x: ring.cx + ring.rx * Math.cos(angle), y: ring.cy + ring.ry * Math.sin(angle) };
+      if (!inside(point, from, 0) && !inside(point, to, gap)) points.push(point);
+    }
+    return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
+  }
+  // 箭头尖端与框边留 3px，出发端贴边
+  function route(shapes, arrow, ring) {
+    if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 3, arrow.counter);
+    const start = anchor(shapes, arrow.from);
+    const end = anchor(shapes, arrow.to);
+    const gap = arrow.size === 'sm' ? 1.5 : 3;
+    const from = start.point;
+    const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
+    const inward = { x: -end.direction.x, y: -end.direction.y };
+    if (arrow.shape === 'line') return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+    if (arrow.shape === 'elbow') {
+      const points = [from, ...(arrow.via || []).map(([x, y]) => ({ x, y }))];
+      if (!arrow.via) {
+        const horizontalOut = start.direction.x !== 0;
+        const horizontalIn = inward.x !== 0;
+        if (horizontalOut && !horizontalIn) points.push({ x: to.x, y: from.y });
+        else if (!horizontalOut && horizontalIn) points.push({ x: from.x, y: to.y });
+        else if (horizontalOut) { const middle = (from.x + to.x) / 2; points.push({ x: middle, y: from.y }, { x: middle, y: to.y }); }
+        else { const middle = (from.y + to.y) / 2; points.push({ x: from.x, y: middle }, { x: to.x, y: middle }); }
+      }
+      points.push(to);
+      return roundedPath(points, arrow.radius ?? (arrow.size === 'sm' ? 8 : 18));
+    }
+    // arc：沿出发方向离开、沿进入方向到达的三次曲线（Keynote 曲线连接线的观感）。
+    // 末端留一段直线给箭头头部；两端横向错开很远时加长控制柄，让弯转提前放缓，箭头不会「折」着进框
+    const bend = arrow.bend ?? 1;
+    const lead = arrow.size === 'sm' ? 0 : 16;
+    const stem = { x: to.x - inward.x * lead, y: to.y - inward.y * lead };
+    const delta = { x: stem.x - from.x, y: stem.y - from.y };
+    const reach = direction => {
+      const along = Math.abs(delta.x * direction.x + delta.y * direction.y);
+      const across = Math.abs(delta.x * direction.y - delta.y * direction.x);
+      return Math.max(24, along, across * 0.45) * 0.56 * bend;
+    };
+    const c1 = arrow.c1 ? { x: arrow.c1[0], y: arrow.c1[1] } : { x: from.x + start.direction.x * reach(start.direction), y: from.y + start.direction.y * reach(start.direction) };
+    const c2 = arrow.c2 ? { x: arrow.c2[0], y: arrow.c2[1] } : { x: stem.x - inward.x * reach(inward), y: stem.y - inward.y * reach(inward) };
+    return `M ${from.x} ${from.y} C ${c1.x} ${c1.y} ${c2.x} ${c2.y} ${stem.x} ${stem.y}${lead ? ` L ${to.x} ${to.y}` : ''}`;
+  }
+
+  // 未挂到文档上的 path 在部分浏览器里量不出长度，借一个隐藏的探针
+  let probeSvg = null;
+  function measurePath(d) {
+    if (!probeSvg) {
+      probeSvg = element('svg', { width: 0, height: 0, 'aria-hidden': 'true', style: 'position:absolute;width:0;height:0;overflow:hidden' });
+      element('path', {}, probeSvg);
+      document.body.append(probeSvg);
+    }
+    const path = probeSvg.firstChild;
+    path.setAttribute('d', d);
+    return path;
+  }
+  let renderId = 0;
+  function render(slide, { title } = {}) {
+    const prefix = `diagram-${++renderId}`;
+    const width = slide.w || 720;
+    const height = slide.h || 450;
+    const svg = element('svg', { viewBox: `0 0 ${width} ${height}`, xmlns: svgNS, class: 'slide', role: 'img' });
+    if (title) element('title', {}, svg).textContent = title;
+    const defs = element('defs', {}, svg);
+    for (const [kind, color] of [['flow', '#111'], ['blocked', '#e0245e']]) {
+      for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
+        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '11', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+        element('path', { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: color }, marker);
+      }
+    }
+    const shadow = element('filter', { id: `${prefix}-shadow`, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
+    element('feDropShadow', { dx: '0', dy: '2', stdDeviation: '5', 'flood-color': '#000', 'flood-opacity': '.12' }, shadow);
+
+    const shapes = new Map();
+    for (const group of slide.groups || []) shapes.set(group.id, group);
+    for (const box of slide.boxes || []) shapes.set(box.id, box);
+
+    for (const group of slide.groups || []) {
+      const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
+      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
+      if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
+      if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+    }
+    const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
+    const boxLayer = element('g', { class: 'slide-boxes' }, svg);
+    const labelLayer = element('g', { class: 'slide-arrow-labels' }, svg);
+
+    for (const box of slide.boxes || []) {
+      const small = box.size === 'sm';
+      const muted = box.status === 'muted';
+      const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, opacity: box.dim ? 0.4 : null }, boxLayer);
+      element('rect', {
+        x: box.x, y: box.y, width: box.w, height: box.h, rx: box.r ?? (small ? 6 : 20),
+        fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
+        stroke: muted ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none', 'stroke-width': muted ? 1.5 : 3, 'stroke-dasharray': muted ? '6 5' : null
+      }, layer);
+      const cx = box.x + box.w / 2;
+      const cy = box.y + box.h / 2;
+      const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
+      text(layer, cx, hasValue ? cy - 10 : cy, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
+      if (hasValue) text(layer, cx, cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
+      const badge = badges[box.status];
+      if (badge && !small) {
+        const bx = box.x + box.w - 17;
+        const by = box.y + 17;
+        element('circle', { cx: bx, cy: by, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
+        text(layer, bx, by + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
+      }
+    }
+    for (const arrow of slide.arrows || []) {
+      const small = arrow.size === 'sm';
+      const kind = arrow.kind === 'blocked' ? 'blocked' : 'flow';
+      const path = element('path', {
+        d: route(shapes, arrow, slide.ring), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
+        'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`, opacity: arrow.dim ? 0.4 : null
+      }, arrowLayer);
+      if (arrow.label) {
+        let at = arrow.at;
+        if (!at) {
+          const probe = measurePath(path.getAttribute('d'));
+          const length = probe.getTotalLength();
+          const middle = probe.getPointAtLength(length / 2);
+          const before = probe.getPointAtLength(Math.max(0, length / 2 - 2));
+          const angle = Math.atan2(middle.y - before.y, middle.x - before.x);
+          const side = arrow.side ?? 1;
+          at = [middle.x + Math.sin(angle) * 16 * side, middle.y - Math.cos(angle) * 16 * side];
+        }
+        text(labelLayer, at[0], at[1], arrow.label, { class: `slide-arrow-label slide-arrow-label--${kind}`, style: arrow.anchor ? `text-anchor: ${arrow.anchor}` : null, opacity: arrow.dim ? 0.4 : null });
+      }
+    }
+    for (const note of slide.notes || []) text(labelLayer, note.x, note.y, note.text, { class: `slide-note${note.tone ? ` slide-note--${note.tone}` : ''}`, style: note.anchor ? `text-anchor: ${note.anchor}` : null });
+    return svg;
+  }
+
+  // Array fields concatenate; later explicitly supplied scalar fields win.
+  const merge = (...parts) => parts.reduce((all, part) => ({
+    ...all,
+    ...part,
+    boxes: [...all.boxes, ...(part.boxes || [])],
+    arrows: [...all.arrows, ...(part.arrows || [])],
+    groups: [...all.groups, ...(part.groups || [])],
+    notes: [...all.notes, ...(part.notes || [])]
+  }), { boxes: [], arrows: [], groups: [], notes: [] });
+
+  window.Diagram = { render, fills, merge };
+})();
+</script><script>(() => {
+  'use strict';
+  const rectOf = element => {
+    const box = element.getBBox();
+    return { left: box.x, top: box.y, right: box.x + box.width, bottom: box.y + box.height };
+  };
+  const rectAttr = rect => {
+    const x = Number(rect.getAttribute('x'));
+    const y = Number(rect.getAttribute('y'));
+    return { left: x, top: y, right: x + Number(rect.getAttribute('width')), bottom: y + Number(rect.getAttribute('height')) };
+  };
+  const overlaps = (a, b, pad = 0) => a.left + pad < b.right && b.left + pad < a.right && a.top + pad < b.bottom && b.top + pad < a.bottom;
+  const contains = (r, p, inset = 0) => p.x > r.left + inset && p.x < r.right - inset && p.y > r.top + inset && p.y < r.bottom - inset;
+  const idOf = reference => reference.split('@')[0];
+
+  function geometry(svg, slide) {
+    const errors = [];
+    const hints = [];
+    const width = slide.w || 720;
+    const height = slide.h || 450;
+    const boxes = [...svg.querySelectorAll('.slide-box')].map(g => ({ id: g.dataset.id, rect: rectAttr(g.querySelector('rect')), texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('circle'), badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm') }));
+    const groups = [...svg.querySelectorAll('.slide-group')].map(g => ({ id: g.dataset.id, rect: rectAttr(g.querySelector('rect')), title: g.querySelector('.slide-group-title'), card: g.querySelectorAll('rect')[1] }));
+    const paths = [...svg.querySelectorAll('.slide-arrow')];
+    const labels = [...svg.querySelectorAll('.slide-arrow-label')].map(element => ({ text: element.textContent, rect: rectOf(element) }));
+    const samples = paths.map(path => {
+      const length = path.getTotalLength();
+      return { length, points: Array.from({ length: 81 }, (_, k) => path.getPointAtLength(length * k / 80)) };
+    });
+    const inCanvas = r => r.left >= -1 && r.top >= -1 && r.right <= width + 1 && r.bottom <= height + 1;
+
+    for (const box of boxes) {
+      const badge = box.badge && rectOf(box.badge);
+      for (const text of box.texts) {
+        const r = rectOf(text);
+        if (r.left < box.rect.left + 6 || r.right > box.rect.right - 6 || r.top < box.rect.top + 2 || r.bottom > box.rect.bottom - 2) errors.push(`文字溢出：${box.id}「${text.textContent}」`);
+        if (badge && overlaps(r, badge, -2)) errors.push(`角标压字：${box.id}「${text.textContent}」，框宽至少加到 字宽 + 70`);
+      }
+      if (!inCanvas(box.rect)) errors.push(`越界：${box.id}`);
+    }
+    // 角标字形光学居中：`.slide text` 的 dominant-baseline: central 对齐的是 em 盒中心，而字形墨迹在 em 盒里并不居中，
+    // assets/diagram.js 的 badges 表用 dy 补偿。这里按 .slide-badge 的实际字体量出墨迹相对 em 中心的下偏量，和 dy 对差；
+    // 换字体栈后墨迹下偏量会变，这条就会报错提醒重新量 dy（不要直接放宽阈值）。
+    const glyphCtx = document.createElement('canvas').getContext('2d');
+    for (const box of boxes) {
+      if (!box.badgeText) continue;
+      const style = getComputedStyle(box.badgeText);
+      glyphCtx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      const metrics = glyphCtx.measureText(box.badgeText.textContent);
+      if (metrics.fontBoundingBoxAscent === undefined || metrics.actualBoundingBoxAscent === undefined) continue;
+      const inkBelowEm = ((metrics.fontBoundingBoxAscent - metrics.fontBoundingBoxDescent) - (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent)) / 2;
+      const offset = (Number(box.badgeText.getAttribute('y')) - Number(box.badge.getAttribute('cy'))) + inkBelowEm;
+      if (Math.abs(offset) > 1) errors.push(`角标未居中：${box.id}「${box.badgeText.textContent}」墨迹中心离圆心 ${offset.toFixed(2)}px（改 assets/diagram.js 的 badges.dy）`);
+    }
+    for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) {
+      if (overlaps(boxes[a].rect, boxes[b].rect)) errors.push(`框重叠：${boxes[a].id} / ${boxes[b].id}`);
+    }
+    (slide.arrows || []).forEach((arrow, index) => {
+      const { length, points } = samples[index];
+      const ends = new Set([idOf(arrow.from), idOf(arrow.to)]);
+      const name = `${idOf(arrow.from)}→${idOf(arrow.to)}`;
+      for (const box of boxes) if (!ends.has(box.id) && points.some(p => contains(box.rect, p, 2))) errors.push(`穿框：${name} 穿过 ${box.id}`);
+      if (length < (arrow.size === 'sm' ? 12 : 28)) errors.push(`短边：${name} 仅 ${Math.round(length)}px`);
+      // 斜线：直线几乎横平竖直却差了几度，多半是两端框没对齐
+      if (arrow.shape === 'line') {
+        const first = points[0];
+        const last = points[points.length - 1];
+        const angle = Math.abs(Math.atan2(last.y - first.y, last.x - first.x) * 180 / Math.PI) % 90;
+        const off = Math.min(angle, 90 - angle);
+        if (off > 0.5 && off < 10) errors.push(`斜线：${name} 偏离横平竖直 ${off.toFixed(1)}°，对齐两端坐标`);
+      }
+      // 箭头折角：箭头头部底下（末端 18px 内）线的方向变化过大，看起来像被掰弯
+      if (arrow.size !== 'sm' && length > 30) {
+        const path = paths[index];
+        const at = d => path.getPointAtLength(Math.max(0, length - d));
+        const heading = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
+        const turn = Math.abs(((heading(at(2), at(0)) - heading(at(24), at(18))) * 180 / Math.PI + 540) % 360 - 180);
+        if (turn > 25) errors.push(`箭头折角：${name} 末端转了 ${Math.round(turn)}°，箭头要落在直的一段上`);
+      }
+      if (points.some(p => p.x < -1 || p.y < -1 || p.x > width + 1 || p.y > height + 1)) errors.push(`越界：连线 ${name}`);
+    });
+    // 边标签按箭头顺序渲染：第 k 个标签属于第 k 支带 label 的箭头
+    const owners = (slide.arrows || []).map((arrow, index) => (arrow.label ? index : null)).filter(index => index !== null);
+    labels.forEach((label, k) => {
+      const owner = owners[k];
+      const name = owner === undefined ? '' : `${idOf(slide.arrows[owner].from)}→${idOf(slide.arrows[owner].to)}`;
+      const halo = { left: label.rect.left - 3, top: label.rect.top - 3, right: label.rect.right + 3, bottom: label.rect.bottom + 3 };
+      for (const box of boxes) if (overlaps(label.rect, box.rect, 1)) errors.push(`标签压框：「${label.text}」压 ${box.id}`);
+      for (const group of groups) if (group.title && overlaps(label.rect, rectOf(group.title))) errors.push(`标签压标题：「${label.text}」`);
+      samples.forEach(({ points }, index) => {
+        if (points.some(p => contains(halo, p))) errors.push(`标签压线：「${label.text}」离 ${idOf(slide.arrows[index].from)}→${idOf(slide.arrows[index].to)} 不足 3px`);
+      });
+      if (owner !== undefined) {
+        const { length, points } = samples[owner];
+        const gap = Math.min(...points.map(p => Math.hypot(Math.max(label.rect.left - p.x, 0, p.x - label.rect.right), Math.max(label.rect.top - p.y, 0, p.y - label.rect.bottom))));
+        if (gap > 30) errors.push(`标签离线太远：「${label.text}」离 ${name} ${Math.round(gap)}px（应 ≤ 30）`);
+        if (length < label.rect.right - label.rect.left + 24) errors.push(`标签放不下：「${label.text}」比 ${name} 的线长（${Math.round(length)}px）还宽，拉开两框或缩短标签`);
+      }
+      if (!inCanvas(label.rect)) errors.push(`越界：标签「${label.text}」`);
+    });
+    for (let a = 0; a < labels.length; a++) for (let b = a + 1; b < labels.length; b++) {
+      if (overlaps(labels[a].rect, labels[b].rect)) errors.push(`标签互压：「${labels[a].text}」/「${labels[b].text}」`);
+    }
+    for (const group of groups) {
+      if (!inCanvas(group.rect)) errors.push(`越界：容器 ${group.id}`);
+      if (!group.title) continue;
+      const title = rectOf(group.title);
+      for (const box of boxes) if (overlaps(title, box.rect)) errors.push(`标题被挡：容器 ${group.id} 的标题压 ${box.id}`);
+      if (group.card && overlaps(title, rectAttr(group.card))) errors.push(`标题被挡：容器 ${group.id} 的标题压卡片`);
+    }
+    return { errors, hints };
+  }
+
+  // Ignore line wrapping and whitespace only, not punctuation or words.
+  const normalize = value => String(value ?? '').replace(/\s+/g, '');
+  const statusOf = node => node.status || '';
+  const kindOf = edge => edge.kind || 'flow';
+
+  function semantic(diagram, content) {
+    const errors = [];
+    const hints = [];
+    const shapes = new Map();
+    for (const shape of [
+      ...(diagram.groups || []).map(group => ({ ...group, label: group.title })),
+      ...(diagram.boxes || [])
+    ]) {
+      if (shapes.has(shape.id)) errors.push(`Duplicate diagram node: ${shape.id}`);
+      shapes.set(shape.id, shape);
+    }
+    const expected = new Map();
+    for (const node of content.nodes || []) {
+      if (expected.has(node.id)) errors.push(`Duplicate content node: ${node.id}`);
+      expected.set(node.id, node);
+      const shape = shapes.get(node.id);
+      if (!shape || shape.size === 'sm') {
+        errors.push(`Missing main node: ${node.id} (${node.label})`);
+        continue;
+      }
+      for (const field of ['label', 'value']) {
+        if (normalize(shape[field]) !== normalize(node[field])) {
+          errors.push(`Different ${field}: ${node.id}; content “${node[field] ?? ''}”, diagram “${shape[field] ?? ''}”`);
+        }
+      }
+      if (statusOf(shape) !== statusOf(node)) {
+        errors.push(`Different status: ${node.id}; content ${statusOf(node) || 'none'}, diagram ${statusOf(shape) || 'none'}`);
+      }
+    }
+    for (const shape of shapes.values()) {
+      if (shape.size !== 'sm' && !expected.has(shape.id)) errors.push(`Extra main node: ${shape.id}`);
+    }
+    // Each occurrence consumes one matching arrow, preserving parallel-edge multiplicity.
+    const keyOf = edge => JSON.stringify([idOf(edge.from), idOf(edge.to), normalize(edge.label), kindOf(edge)]);
+    const drawn = new Map();
+    for (const arrow of diagram.arrows || []) {
+      if (arrow.size === 'sm') continue;
+      const key = keyOf(arrow);
+      drawn.set(key, (drawn.get(key) || 0) + 1);
+    }
+    for (const edge of content.edges || []) {
+      const key = keyOf(edge);
+      const count = drawn.get(key) || 0;
+      if (!count) errors.push(`Missing edge: ${edge.from}→${edge.to} [${edge.label ?? ''}; ${kindOf(edge)}]`);
+      else drawn.set(key, count - 1);
+    }
+    for (const [key, count] of drawn) {
+      if (!count) continue;
+      const [from, to, label, kind] = JSON.parse(key);
+      errors.push(`Extra edge: ${from}→${to} [${label}; ${kind}] ×${count}`);
+    }
+    return { errors, hints };
+  }
+
+  window.DiagramCheck = { geometry, semantic };
+})();
+</script></head>
+<body><main><h1>交付与运营 · 通用图解 Demo</h1><p id="preview-summary">Rendering…</p><div id="preview"></div></main>
+<script>const documentData = {"title": "交付与运营 · 通用图解 Demo", "frames": [{"id": "release-flow", "title": "发布流水线", "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。", "content": {"nodes": [{"id": "commit", "label": "代码提交"}, {"id": "build", "label": "自动构建"}, {"id": "accept", "label": "变更验收"}, {"id": "release", "label": "灰度上线"}], "edges": [{"from": "commit", "to": "build", "label": "触发"}, {"from": "build", "to": "accept"}, {"from": "accept", "to": "release"}]}, "diagram": {"boxes": [{"id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交"}, {"id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建"}, {"id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收"}, {"id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线"}], "arrows": [{"from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206]}, {"from": "build@right", "to": "accept@left", "shape": "line"}, {"from": "accept@right", "to": "release@left", "shape": "line"}]}}, {"id": "recovery-loop", "title": "异常恢复闭环", "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。", "content": {"nodes": [{"id": "detect", "label": "监测信号", "status": "warn"}, {"id": "locate", "label": "定位原因", "status": "error"}, {"id": "repair", "label": "执行修复", "status": "ok"}, {"id": "verify", "label": "复核结果", "status": "ok"}], "edges": [{"from": "detect", "to": "locate", "label": "告警"}, {"from": "locate", "to": "repair"}, {"from": "repair", "to": "verify"}, {"from": "verify", "to": "detect", "label": "持续监测"}]}, "diagram": {"boxes": [{"id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn"}, {"id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error"}, {"id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok"}, {"id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok"}], "arrows": [{"from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100]}, {"from": "locate@bottom", "to": "repair@right", "shape": "arc"}, {"from": "repair@left", "to": "verify@bottom", "shape": "arc"}, {"from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104]}]}}, {"id": "service-boundaries", "title": "订单与仓储边界", "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。", "content": {"nodes": [{"id": "platform", "label": "交易平台"}, {"id": "orders", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}, {"id": "accepted", "label": "接收订单"}, {"id": "confirmed", "label": "确认完成"}, {"id": "reserved", "label": "预留库存"}, {"id": "shipped", "label": "安排发货"}], "edges": [{"from": "accepted", "to": "reserved", "label": "预留"}, {"from": "shipped", "to": "confirmed", "label": "确认"}]}, "diagram": {"w": 960, "h": 540, "groups": [{"id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22}, {"id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22}, {"id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22}], "boxes": [{"id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单"}, {"id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成"}, {"id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存"}, {"id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货"}], "arrows": [{"from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198]}, {"from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358]}]}}]};
+const diagramStyle = "/* Diagram styles: white canvas, bright fills, bold labels, solid directional arrows. */\n.slide { display: block; width: 100%; height: auto; background: #fff; font-family: \"PingFang SC\", -apple-system, BlinkMacSystemFont, \"Helvetica Neue\", \"Microsoft YaHei\", sans-serif; }\n.slide text { dominant-baseline: central; text-anchor: middle; }\n.slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }\n.slide-box--sm .slide-box-label { font-size: 9.5px; }\n.slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }\n.slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }\n.slide-badge { font-size: 13px; font-weight: 800; }\n.slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }\n.slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }\n.slide-arrow--sm { stroke-width: 1.6; }\n.slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }\n.slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }\n.slide-arrow-label--blocked { fill: #c41d4f; }\n.slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }\n.slide-note--warn { fill: #c41d4f; font-weight: 700; }\n";
+
+(async () => {
+  const report = { frames: documentData.frames.length, drawn: 0, errors: 0, hints: 0, items: [], scriptErrors: [] };
+  const root = document.getElementById('preview');
+  for (const frame of documentData.frames) {
+    const article = document.createElement('article');
+    article.className = 'preview-frame'; article.dataset.key = frame.id;
+    const heading = document.createElement('h2'); heading.textContent = frame.title;
+    const note = document.createElement('p'); note.textContent = frame.note || '';
+    const canvas = document.createElement('div'); canvas.className = 'preview-slide';
+    const result = document.createElement('ul'); result.className = 'preview-check';
+    article.append(heading, note, canvas, result); root.append(article);
+    try {
+      const svg = Diagram.render(frame.diagram, { title: frame.title });
+      canvas.append(svg); report.drawn++;
+    } catch (error) {
+      report.scriptErrors.push(frame.id + ': ' + error.message);
+    }
+  }
+  await document.fonts.ready;
+  for (const frame of documentData.frames) {
+    const article = [...root.children].find(element => element.dataset.key === frame.id);
+    const svg = article.querySelector('svg.slide');
+    const result = article.querySelector('.preview-check');
+    let errors = [], hints = [];
+    if (!svg) errors.push('Missing rendered diagram: ' + frame.id);
+    else {
+      const geometry = DiagramCheck.geometry(svg, frame.diagram);
+      const semantic = DiagramCheck.semantic(frame.diagram, frame.content);
+      errors = [...geometry.errors, ...semantic.errors]; hints = [...geometry.hints, ...semantic.hints];
+    }
+    report.errors += errors.length; report.hints += hints.length;
+    report.items.push({ key: frame.id, drawn: Boolean(svg), errors, hints });
+    for (const [level, lines] of [['error', errors], ['hint', hints]]) for (const message of lines) {
+      const li = document.createElement('li'); li.dataset.level = level; li.textContent = message; result.append(li);
+    }
+    if (!errors.length) {
+      const li = document.createElement('li'); li.dataset.level = 'ok';
+      li.textContent = 'Geometry and content checks passed; visual review still required.'; result.append(li);
+    }
+  }
+  report.scriptErrors.push(...window.__diagramErrors);
+  const summary = document.getElementById('preview-summary');
+  summary.textContent = `${report.drawn}/${report.frames} diagrams · ${report.errors} errors · ${report.hints} hints`;
+  summary.dataset.level = report.errors || report.scriptErrors.length ? 'error' : 'ok';
+  window.__diagramStyle = diagramStyle;
+  window.__diagramCheck = report;
+  document.body.dataset.ready = 'true';
+})().catch(error => {
+  window.__diagramCheck = { frames: documentData.frames.length, drawn: 0, errors: 1, hints: 0, items: [], scriptErrors: [error.message] };
+  document.getElementById('preview-summary').textContent = error.message;
+  document.body.dataset.ready = 'true';
+});
+</script></body></html>

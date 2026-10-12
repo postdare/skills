@@ -1,0 +1,108 @@
+{
+  "title": "交付与运营 · 通用图解 Demo",
+  "frames": [
+    {
+      "id": "release-flow",
+      "title": "发布流水线",
+      "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          { "id": "commit", "label": "代码提交" },
+          { "id": "build", "label": "自动构建" },
+          { "id": "accept", "label": "变更验收" },
+          { "id": "release", "label": "灰度上线" }
+        ],
+        "edges": [
+          { "from": "commit", "to": "build", "label": "触发" },
+          { "from": "build", "to": "accept" },
+          { "from": "accept", "to": "release" }
+        ]
+      },
+      "diagram": {
+        "boxes": [
+          { "id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交" },
+          { "id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建" },
+          { "id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收" },
+          { "id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线" }
+        ],
+        "arrows": [
+          { "from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206] },
+          { "from": "build@right", "to": "accept@left", "shape": "line" },
+          { "from": "accept@right", "to": "release@left", "shape": "line" }
+        ]
+      }
+    },
+    {
+      "id": "recovery-loop",
+      "title": "异常恢复闭环",
+      "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          { "id": "detect", "label": "监测信号", "status": "warn" },
+          { "id": "locate", "label": "定位原因", "status": "error" },
+          { "id": "repair", "label": "执行修复", "status": "ok" },
+          { "id": "verify", "label": "复核结果", "status": "ok" }
+        ],
+        "edges": [
+          { "from": "detect", "to": "locate", "label": "告警" },
+          { "from": "locate", "to": "repair" },
+          { "from": "repair", "to": "verify" },
+          { "from": "verify", "to": "detect", "label": "持续监测" }
+        ]
+      },
+      "diagram": {
+        "boxes": [
+          { "id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn" },
+          { "id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error" },
+          { "id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok" },
+          { "id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok" }
+        ],
+        "arrows": [
+          { "from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100] },
+          { "from": "locate@bottom", "to": "repair@right", "shape": "arc" },
+          { "from": "repair@left", "to": "verify@bottom", "shape": "arc" },
+          { "from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104] }
+        ]
+      }
+    },
+    {
+      "id": "service-boundaries",
+      "title": "订单与仓储边界",
+      "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          { "id": "platform", "label": "交易平台" },
+          { "id": "orders", "label": "订单服务" },
+          { "id": "warehouse", "label": "仓储服务" },
+          { "id": "accepted", "label": "接收订单" },
+          { "id": "confirmed", "label": "确认完成" },
+          { "id": "reserved", "label": "预留库存" },
+          { "id": "shipped", "label": "安排发货" }
+        ],
+        "edges": [
+          { "from": "accepted", "to": "reserved", "label": "预留" },
+          { "from": "shipped", "to": "confirmed", "label": "确认" }
+        ]
+      },
+      "diagram": {
+        "w": 960,
+        "h": 540,
+        "groups": [
+          { "id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22 },
+          { "id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22 },
+          { "id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22 }
+        ],
+        "boxes": [
+          { "id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单" },
+          { "id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成" },
+          { "id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存" },
+          { "id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货" }
+        ],
+        "arrows": [
+          { "from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198] },
+          { "from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358] }
+        ]
+      }
+    }
+  ]
+}
