@@ -28,7 +28,7 @@
     const dy = p.y - center.y;
     if (!half.w || !half.h) return -Infinity;
     if (shape === 'diamond') return (1 - (Math.abs(dx) / half.w + Math.abs(dy) / half.h)) / Math.hypot(1 / half.w, 1 / half.h);
-    if (shape === 'ellipse') {
+    if (shape === 'ellipse' || shape === 'initial' || shape === 'final') {
       const radial = Math.hypot(dx / half.w, dy / half.h);
       const gradient = Math.hypot(dx / half.w ** 2, dy / half.h ** 2);
       return gradient ? (1 - radial) * radial / gradient : Math.min(half.w, half.h);
@@ -48,7 +48,7 @@
   const outline = (shape, frame) => {
     const half = halfOf(frame);
     const center = centerOf(frame);
-    if (shape === 'ellipse') return Array.from({ length: 32 }, (_, index) => {
+    if (shape === 'ellipse' || shape === 'initial' || shape === 'final') return Array.from({ length: 32 }, (_, index) => {
       const angle = index / 32 * Math.PI * 2;
       return { x: center.x + half.w * Math.cos(angle), y: center.y + half.h * Math.sin(angle) };
     });
@@ -93,8 +93,7 @@
     const height = slide.h || 450;
     const boxes = [...svg.querySelectorAll('.slide-box')].map(g => ({
       id: g.dataset.id, shape: g.dataset.shape || 'rect', frame: rectOf(g.querySelector('.slide-shape')),
-      texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('circle'),
-      badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm')
+      texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('.slide-badge-dot'), badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm')
     }));
     const groups = [...svg.querySelectorAll('.slide-group')].map(g => ({ id: g.dataset.id, frame: rectOf(g.querySelector('.slide-shape')), title: g.querySelector('.slide-group-title'), card: g.querySelector('.slide-card') }));
     const paths = [...svg.querySelectorAll('.slide-arrow')];
@@ -236,7 +235,9 @@
       if (shape.size !== 'sm' && !expected.has(shape.id)) errors.push(`Extra main node: ${shape.id}`);
     }
     // Each occurrence consumes one matching arrow, preserving parallel-edge multiplicity.
-    const keyOf = edge => JSON.stringify([idOf(edge.from), idOf(edge.to), normalize(edge.label), kindOf(edge)]);
+    // start（compose/aggregate 起点菱形）与 kind 一样是语义属性，两端必须一致
+    const startOf = edge => edge.start || '';
+    const keyOf = edge => JSON.stringify([idOf(edge.from), idOf(edge.to), normalize(edge.label), kindOf(edge), startOf(edge)]);
     const drawn = new Map();
     for (const arrow of diagram.arrows || []) {
       if (arrow.size === 'sm') continue;

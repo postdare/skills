@@ -5,6 +5,8 @@
 .slide-box--sm .slide-box-label { font-size: 9.5px; }
 .slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
 .slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }
+/* 节点图标：与文字同墨色的线条图标，位于框顶，不占语义 */
+.slide-icon { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .slide-badge { font-size: 13px; font-weight: 800; }
 .slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }
 .slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }

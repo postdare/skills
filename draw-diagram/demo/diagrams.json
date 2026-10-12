@@ -7,28 +7,99 @@
       "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。",
       "content": {
         "nodes": [
-          { "id": "commit", "label": "代码提交" },
-          { "id": "build", "label": "自动构建" },
-          { "id": "accept", "label": "变更验收" },
-          { "id": "release", "label": "灰度上线" }
+          {
+            "id": "commit",
+            "label": "代码提交"
+          },
+          {
+            "id": "build",
+            "label": "自动构建"
+          },
+          {
+            "id": "accept",
+            "label": "变更验收"
+          },
+          {
+            "id": "release",
+            "label": "灰度上线"
+          }
         ],
         "edges": [
-          { "from": "commit", "to": "build", "label": "触发" },
-          { "from": "build", "to": "accept" },
-          { "from": "accept", "to": "release" }
+          {
+            "from": "commit",
+            "to": "build",
+            "label": "触发"
+          },
+          {
+            "from": "build",
+            "to": "accept"
+          },
+          {
+            "from": "accept",
+            "to": "release"
+          }
         ]
       },
       "diagram": {
         "boxes": [
-          { "id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交" },
-          { "id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建" },
-          { "id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收" },
-          { "id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线" }
+          {
+            "id": "commit",
+            "x": 14,
+            "y": 190,
+            "w": 124,
+            "h": 70,
+            "fill": "sky",
+            "label": "代码提交"
+          },
+          {
+            "id": "build",
+            "x": 203,
+            "y": 190,
+            "w": 124,
+            "h": 70,
+            "fill": "mint",
+            "label": "自动构建"
+          },
+          {
+            "id": "accept",
+            "x": 392,
+            "y": 190,
+            "w": 124,
+            "h": 70,
+            "fill": "amber",
+            "label": "变更验收"
+          },
+          {
+            "id": "release",
+            "x": 581,
+            "y": 190,
+            "w": 124,
+            "h": 70,
+            "fill": "pink",
+            "label": "灰度上线"
+          }
         ],
         "arrows": [
-          { "from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206] },
-          { "from": "build@right", "to": "accept@left", "shape": "line" },
-          { "from": "accept@right", "to": "release@left", "shape": "line" }
+          {
+            "from": "commit@right",
+            "to": "build@left",
+            "shape": "line",
+            "label": "触发",
+            "at": [
+              170,
+              206
+            ]
+          },
+          {
+            "from": "build@right",
+            "to": "accept@left",
+            "shape": "line"
+          },
+          {
+            "from": "accept@right",
+            "to": "release@left",
+            "shape": "line"
+          }
         ]
       }
     },
@@ -38,30 +109,122 @@
       "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。",
       "content": {
         "nodes": [
-          { "id": "detect", "label": "监测信号", "status": "warn" },
-          { "id": "locate", "label": "定位原因", "status": "error" },
-          { "id": "repair", "label": "执行修复", "status": "ok" },
-          { "id": "verify", "label": "复核结果", "status": "ok" }
+          {
+            "id": "detect",
+            "label": "监测信号",
+            "status": "warn"
+          },
+          {
+            "id": "locate",
+            "label": "定位原因",
+            "status": "error"
+          },
+          {
+            "id": "repair",
+            "label": "执行修复",
+            "status": "ok"
+          },
+          {
+            "id": "verify",
+            "label": "复核结果",
+            "status": "ok"
+          }
         ],
         "edges": [
-          { "from": "detect", "to": "locate", "label": "告警" },
-          { "from": "locate", "to": "repair" },
-          { "from": "repair", "to": "verify" },
-          { "from": "verify", "to": "detect", "label": "持续监测" }
+          {
+            "from": "detect",
+            "to": "locate",
+            "label": "告警"
+          },
+          {
+            "from": "locate",
+            "to": "repair"
+          },
+          {
+            "from": "repair",
+            "to": "verify"
+          },
+          {
+            "from": "verify",
+            "to": "detect",
+            "label": "持续监测"
+          }
         ]
       },
       "diagram": {
         "boxes": [
-          { "id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn" },
-          { "id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error" },
-          { "id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok" },
-          { "id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok" }
+          {
+            "id": "detect",
+            "x": 280,
+            "y": 24,
+            "w": 160,
+            "h": 70,
+            "fill": "sky",
+            "label": "监测信号",
+            "status": "warn"
+          },
+          {
+            "id": "locate",
+            "x": 520,
+            "y": 190,
+            "w": 160,
+            "h": 70,
+            "fill": "amber",
+            "label": "定位原因",
+            "status": "error"
+          },
+          {
+            "id": "repair",
+            "x": 280,
+            "y": 356,
+            "w": 160,
+            "h": 70,
+            "fill": "pink",
+            "label": "执行修复",
+            "status": "ok"
+          },
+          {
+            "id": "verify",
+            "x": 40,
+            "y": 190,
+            "w": 160,
+            "h": 70,
+            "fill": "mint",
+            "label": "复核结果",
+            "status": "ok"
+          }
         ],
         "arrows": [
-          { "from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100] },
-          { "from": "locate@bottom", "to": "repair@right", "shape": "arc" },
-          { "from": "repair@left", "to": "verify@bottom", "shape": "arc" },
-          { "from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104] }
+          {
+            "from": "detect@right",
+            "to": "locate@top",
+            "shape": "arc",
+            "label": "告警",
+            "at": [
+              604,
+              100
+            ]
+          },
+          {
+            "from": "locate@bottom",
+            "to": "repair@right",
+            "shape": "arc"
+          },
+          {
+            "from": "repair@left",
+            "to": "verify@bottom",
+            "shape": "arc"
+          },
+          {
+            "from": "verify@top",
+            "to": "detect@left",
+            "shape": "arc",
+            "label": "持续监测",
+            "at": [
+              96,
+              104
+            ]
+          }
         ]
       }
     },
@@ -71,36 +234,139 @@
       "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。",
       "content": {
         "nodes": [
-          { "id": "platform", "label": "交易平台" },
-          { "id": "orders", "label": "订单服务" },
-          { "id": "warehouse", "label": "仓储服务" },
-          { "id": "accepted", "label": "接收订单" },
-          { "id": "confirmed", "label": "确认完成" },
-          { "id": "reserved", "label": "预留库存" },
-          { "id": "shipped", "label": "安排发货" }
+          {
+            "id": "platform",
+            "label": "交易平台"
+          },
+          {
+            "id": "orders",
+            "label": "订单服务"
+          },
+          {
+            "id": "warehouse",
+            "label": "仓储服务"
+          },
+          {
+            "id": "accepted",
+            "label": "接收订单"
+          },
+          {
+            "id": "confirmed",
+            "label": "确认完成"
+          },
+          {
+            "id": "reserved",
+            "label": "预留库存"
+          },
+          {
+            "id": "shipped",
+            "label": "安排发货"
+          }
         ],
         "edges": [
-          { "from": "accepted", "to": "reserved", "label": "预留" },
-          { "from": "shipped", "to": "confirmed", "label": "确认" }
+          {
+            "from": "accepted",
+            "to": "reserved",
+            "label": "预留"
+          },
+          {
+            "from": "shipped",
+            "to": "confirmed",
+            "label": "确认"
+          }
         ]
       },
       "diagram": {
         "w": 960,
         "h": 540,
         "groups": [
-          { "id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22 },
-          { "id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22 },
-          { "id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22 }
+          {
+            "id": "platform",
+            "x": 20,
+            "y": 20,
+            "w": 920,
+            "h": 500,
+            "title": "交易平台",
+            "titleY": 22
+          },
+          {
+            "id": "orders",
+            "x": 60,
+            "y": 100,
+            "w": 300,
+            "h": 340,
+            "title": "订单服务",
+            "titleY": 22
+          },
+          {
+            "id": "warehouse",
+            "x": 600,
+            "y": 100,
+            "w": 300,
+            "h": 340,
+            "title": "仓储服务",
+            "titleY": 22
+          }
         ],
         "boxes": [
-          { "id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单" },
-          { "id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成" },
-          { "id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存" },
-          { "id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货" }
+          {
+            "id": "accepted",
+            "x": 110,
+            "y": 180,
+            "w": 200,
+            "h": 70,
+            "fill": "mint",
+            "label": "接收订单"
+          },
+          {
+            "id": "confirmed",
+            "x": 110,
+            "y": 340,
+            "w": 200,
+            "h": 70,
+            "fill": "mintSoft",
+            "label": "确认完成"
+          },
+          {
+            "id": "reserved",
+            "x": 650,
+            "y": 180,
+            "w": 200,
+            "h": 70,
+            "fill": "pink",
+            "label": "预留库存"
+          },
+          {
+            "id": "shipped",
+            "x": 650,
+            "y": 340,
+            "w": 200,
+            "h": 70,
+            "fill": "pinkSoft",
+            "label": "安排发货"
+          }
         ],
         "arrows": [
-          { "from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198] },
-          { "from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358] }
+          {
+            "from": "accepted@right",
+            "to": "reserved@left",
+            "shape": "line",
+            "label": "预留",
+            "at": [
+              480,
+              198
+            ]
+          },
+          {
+            "from": "shipped@left",
+            "to": "confirmed@right",
+            "shape": "line",
+            "label": "确认",
+            "at": [
+              480,
+              358
+            ]
+          }
         ]
       }
     },
@@ -110,34 +376,137 @@
       "note": "四种外形各担一种语义：椭圆起止、矩形步骤、菱形判断、胶囊状态。菱形与胶囊需要更大的外接框，因此画布为 820×450。来源：demo/brief.md。",
       "content": {
         "nodes": [
-          { "id": "start", "label": "开始" },
-          { "id": "submit", "label": "提交变更" },
-          { "id": "gate", "label": "审核通过？" },
-          { "id": "ship", "label": "上线", "status": "ok" },
-          { "id": "revise", "label": "修改", "status": "warn" }
+          {
+            "id": "start",
+            "label": "开始"
+          },
+          {
+            "id": "submit",
+            "label": "提交变更"
+          },
+          {
+            "id": "gate",
+            "label": "审核通过？"
+          },
+          {
+            "id": "ship",
+            "label": "上线",
+            "status": "ok"
+          },
+          {
+            "id": "revise",
+            "label": "修改",
+            "status": "warn"
+          }
         ],
         "edges": [
-          { "from": "start", "to": "submit" },
-          { "from": "submit", "to": "gate" },
-          { "from": "gate", "to": "ship", "label": "通过" },
-          { "from": "gate", "to": "revise", "label": "驳回" }
+          {
+            "from": "start",
+            "to": "submit"
+          },
+          {
+            "from": "submit",
+            "to": "gate"
+          },
+          {
+            "from": "gate",
+            "to": "ship",
+            "label": "通过"
+          },
+          {
+            "from": "gate",
+            "to": "revise",
+            "label": "驳回"
+          }
         ]
       },
       "diagram": {
         "w": 820,
         "h": 450,
         "boxes": [
-          { "id": "start", "shape": "ellipse", "x": 20, "y": 190, "w": 140, "h": 70, "fill": "sky", "label": "开始" },
-          { "id": "submit", "x": 200, "y": 190, "w": 150, "h": 70, "fill": "mintSoft", "label": "提交变更" },
-          { "id": "gate", "shape": "diamond", "x": 390, "y": 160, "w": 220, "h": 130, "fill": "amber", "label": "审核通过？" },
-          { "id": "ship", "shape": "pill", "x": 680, "y": 193, "w": 120, "h": 64, "fill": "mint", "label": "上线", "status": "ok" },
-          { "id": "revise", "shape": "pill", "x": 680, "y": 305, "w": 120, "h": 64, "fill": "pink", "label": "修改", "status": "warn" }
+          {
+            "id": "start",
+            "shape": "ellipse",
+            "x": 20,
+            "y": 190,
+            "w": 140,
+            "h": 70,
+            "fill": "sky",
+            "label": "开始"
+          },
+          {
+            "id": "submit",
+            "x": 200,
+            "y": 190,
+            "w": 150,
+            "h": 70,
+            "fill": "mintSoft",
+            "label": "提交变更"
+          },
+          {
+            "id": "gate",
+            "shape": "diamond",
+            "x": 390,
+            "y": 160,
+            "w": 220,
+            "h": 130,
+            "fill": "amber",
+            "label": "审核通过？"
+          },
+          {
+            "id": "ship",
+            "shape": "pill",
+            "x": 680,
+            "y": 193,
+            "w": 120,
+            "h": 64,
+            "fill": "mint",
+            "label": "上线",
+            "status": "ok"
+          },
+          {
+            "id": "revise",
+            "shape": "pill",
+            "x": 680,
+            "y": 305,
+            "w": 120,
+            "h": 64,
+            "fill": "pink",
+            "label": "修改",
+            "status": "warn"
+          }
         ],
         "arrows": [
-          { "from": "start@right", "to": "submit@left", "shape": "line" },
-          { "from": "submit@right", "to": "gate@left", "shape": "line" },
-          { "from": "gate@right", "to": "ship@left", "shape": "line", "label": "通过", "at": [643, 205] },
-          { "from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305] }
+          {
+            "from": "start@right",
+            "to": "submit@left",
+            "shape": "line"
+          },
+          {
+            "from": "submit@right",
+            "to": "gate@left",
+            "shape": "line"
+          },
+          {
+            "from": "gate@right",
+            "to": "ship@left",
+            "shape": "line",
+            "label": "通过",
+            "at": [
+              643,
+              205
+            ]
+          },
+          {
+            "from": "gate@bottom",
+            "to": "revise@left",
+            "shape": "arc",
+            "label": "驳回",
+            "at": [
+              555,
+              305
+            ]
+          }
         ]
       }
     },
@@ -147,35 +516,595 @@
       "note": "时序风格：三位参与者各带一条生命线，消息按时间编号；请求用实线实心箭头（flow）、应答用虚线开放箭头（reply），含一次自调用。来源：demo/brief.md。",
       "content": {
         "nodes": [
-          { "id": "client", "label": "客户端" },
-          { "id": "order", "label": "订单服务" },
-          { "id": "warehouse", "label": "仓储服务" }
+          {
+            "id": "client",
+            "label": "客户端"
+          },
+          {
+            "id": "order",
+            "label": "订单服务"
+          },
+          {
+            "id": "warehouse",
+            "label": "仓储服务"
+          }
         ],
         "edges": [
-          { "from": "client", "to": "order", "label": "1 提交订单" },
-          { "from": "order", "to": "order", "label": "2 校验订单" },
-          { "from": "order", "to": "warehouse", "label": "3 预留库存" },
-          { "from": "warehouse", "to": "order", "label": "4 库存结果", "kind": "reply" },
-          { "from": "order", "to": "client", "label": "5 下单结果", "kind": "reply" }
+          {
+            "from": "client",
+            "to": "order",
+            "label": "1 提交订单"
+          },
+          {
+            "from": "order",
+            "to": "order",
+            "label": "2 校验订单"
+          },
+          {
+            "from": "order",
+            "to": "warehouse",
+            "label": "3 预留库存"
+          },
+          {
+            "from": "warehouse",
+            "to": "order",
+            "label": "4 库存结果",
+            "kind": "reply"
+          },
+          {
+            "from": "order",
+            "to": "client",
+            "label": "5 下单结果",
+            "kind": "reply"
+          }
         ]
       },
       "diagram": {
         "boxes": [
-          { "id": "client", "x": 75, "y": 24, "w": 150, "h": 64, "fill": "sky", "label": "客户端" },
-          { "id": "order", "x": 285, "y": 24, "w": 150, "h": 64, "fill": "mint", "label": "订单服务" },
-          { "id": "warehouse", "x": 495, "y": 24, "w": 150, "h": 64, "fill": "pink", "label": "仓储服务" }
+          {
+            "id": "client",
+            "x": 75,
+            "y": 24,
+            "w": 150,
+            "h": 64,
+            "fill": "sky",
+            "label": "客户端"
+          },
+          {
+            "id": "order",
+            "x": 285,
+            "y": 24,
+            "w": 150,
+            "h": 64,
+            "fill": "mint",
+            "label": "订单服务"
+          },
+          {
+            "id": "warehouse",
+            "x": 495,
+            "y": 24,
+            "w": 150,
+            "h": 64,
+            "fill": "pink",
+            "label": "仓储服务"
+          }
         ],
         "lifelines": [
-          { "of": "client", "to": 420, "end": true },
-          { "of": "order", "to": 420, "end": true },
-          { "of": "warehouse", "to": 420, "end": true }
+          {
+            "of": "client",
+            "to": 420,
+            "end": true
+          },
+          {
+            "of": "order",
+            "to": 420,
+            "end": true
+          },
+          {
+            "of": "warehouse",
+            "to": 420,
+            "end": true
+          }
         ],
         "arrows": [
-          { "from": "client@life:150", "to": "order@life:150", "label": "1 提交订单", "at": [255, 133] },
-          { "from": "order@life:190", "to": "order@life:240", "label": "2 校验订单", "at": [405, 220], "bend": 90 },
-          { "from": "order@life:290", "to": "warehouse@life:290", "label": "3 预留库存", "at": [465, 273] },
-          { "from": "warehouse@life:340", "to": "order@life:340", "kind": "reply", "label": "4 库存结果", "at": [465, 323] },
-          { "from": "order@life:390", "to": "client@life:390", "kind": "reply", "label": "5 下单结果", "at": [255, 373] }
+          {
+            "from": "client@life:150",
+            "to": "order@life:150",
+            "label": "1 提交订单",
+            "at": [
+              255,
+              133
+            ]
+          },
+          {
+            "from": "order@life:190",
+            "to": "order@life:240",
+            "label": "2 校验订单",
+            "at": [
+              405,
+              220
+            ],
+            "bend": 90
+          },
+          {
+            "from": "order@life:290",
+            "to": "warehouse@life:290",
+            "label": "3 预留库存",
+            "at": [
+              465,
+              273
+            ]
+          },
+          {
+            "from": "warehouse@life:340",
+            "to": "order@life:340",
+            "kind": "reply",
+            "label": "4 库存结果",
+            "at": [
+              465,
+              323
+            ]
+          },
+          {
+            "from": "order@life:390",
+            "to": "client@life:390",
+            "kind": "reply",
+            "label": "5 下单结果",
+            "at": [
+              255,
+              373
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ops-architecture",
+      "title": "巡检架构：节点图标",
+      "note": "六种角色各带图标：人、调度、队列、服务、数据库、外部系统；消费关系用异步线型（async）。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "operator",
+            "label": "运营人员"
+          },
+          {
+            "id": "scheduler",
+            "label": "定时调度"
+          },
+          {
+            "id": "queue",
+            "label": "任务队列"
+          },
+          {
+            "id": "worker",
+            "label": "巡检服务"
+          },
+          {
+            "id": "store",
+            "label": "运营数据库"
+          },
+          {
+            "id": "monitor",
+            "label": "外部监控"
+          }
+        ],
+        "edges": [
+          {
+            "from": "operator",
+            "to": "worker",
+            "label": "手动触发"
+          },
+          {
+            "from": "scheduler",
+            "to": "queue",
+            "label": "定时投递"
+          },
+          {
+            "from": "queue",
+            "to": "worker",
+            "label": "消费",
+            "kind": "async"
+          },
+          {
+            "from": "worker",
+            "to": "store",
+            "label": "读写"
+          },
+          {
+            "from": "worker",
+            "to": "monitor",
+            "label": "上报"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 820,
+        "h": 450,
+        "boxes": [
+          {
+            "id": "operator",
+            "x": 40,
+            "y": 66,
+            "w": 170,
+            "h": 84,
+            "fill": "sky",
+            "label": "运营人员",
+            "icon": "user"
+          },
+          {
+            "id": "scheduler",
+            "x": 40,
+            "y": 300,
+            "w": 170,
+            "h": 84,
+            "fill": "amber",
+            "label": "定时调度",
+            "icon": "clock"
+          },
+          {
+            "id": "queue",
+            "x": 325,
+            "y": 330,
+            "w": 170,
+            "h": 84,
+            "fill": "violet",
+            "label": "任务队列",
+            "icon": "queue"
+          },
+          {
+            "id": "worker",
+            "x": 325,
+            "y": 183,
+            "w": 170,
+            "h": 84,
+            "fill": "mint",
+            "label": "巡检服务"
+          },
+          {
+            "id": "store",
+            "x": 610,
+            "y": 66,
+            "w": 170,
+            "h": 84,
+            "fill": "skySoft",
+            "label": "运营数据库",
+            "icon": "database"
+          },
+          {
+            "id": "monitor",
+            "x": 610,
+            "y": 300,
+            "w": 170,
+            "h": 84,
+            "fill": "gray",
+            "label": "外部监控",
+            "icon": "cloud"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "operator@right",
+            "to": "worker@left:0.3",
+            "shape": "arc",
+            "label": "手动触发",
+            "at": [
+              245,
+              84
+            ]
+          },
+          {
+            "from": "scheduler@right",
+            "to": "queue@left",
+            "shape": "line",
+            "label": "定时投递",
+            "at": [
+              268,
+              334
+            ]
+          },
+          {
+            "from": "queue@top",
+            "to": "worker@bottom",
+            "shape": "arc",
+            "kind": "async",
+            "label": "消费",
+            "at": [
+              446,
+              300
+            ]
+          },
+          {
+            "from": "worker@right:0.3",
+            "to": "store@left",
+            "shape": "arc",
+            "label": "读写",
+            "at": [
+              552,
+              96
+            ]
+          },
+          {
+            "from": "worker@right:0.7",
+            "to": "monitor@left",
+            "shape": "arc",
+            "label": "上报",
+            "at": [
+              552,
+              354
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "order-states",
+      "title": "订单状态机：起止圆点",
+      "note": "状态机：initial 实心圆点开局、final 牛眼收官，迁移条件标在边上，终态用 muted 表示关闭。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "begin",
+            "label": ""
+          },
+          {
+            "id": "pending",
+            "label": "待支付"
+          },
+          {
+            "id": "paid",
+            "label": "已支付",
+            "status": "ok"
+          },
+          {
+            "id": "cancelled",
+            "label": "已取消",
+            "status": "muted"
+          },
+          {
+            "id": "done",
+            "label": ""
+          }
+        ],
+        "edges": [
+          {
+            "from": "begin",
+            "to": "pending"
+          },
+          {
+            "from": "pending",
+            "to": "paid",
+            "label": "支付成功"
+          },
+          {
+            "from": "pending",
+            "to": "cancelled",
+            "label": "超时关闭"
+          },
+          {
+            "from": "paid",
+            "to": "done",
+            "label": "订单完成"
+          }
+        ]
+      },
+      "diagram": {
+        "boxes": [
+          {
+            "id": "begin",
+            "shape": "initial",
+            "x": 48,
+            "y": 213,
+            "w": 24,
+            "h": 24
+          },
+          {
+            "id": "pending",
+            "x": 130,
+            "y": 190,
+            "w": 150,
+            "h": 70,
+            "fill": "amber",
+            "label": "待支付"
+          },
+          {
+            "id": "paid",
+            "x": 390,
+            "y": 100,
+            "w": 150,
+            "h": 70,
+            "fill": "mint",
+            "label": "已支付",
+            "status": "ok"
+          },
+          {
+            "id": "cancelled",
+            "x": 390,
+            "y": 300,
+            "w": 150,
+            "h": 70,
+            "fill": "pink",
+            "label": "已取消",
+            "status": "muted"
+          },
+          {
+            "id": "done",
+            "shape": "final",
+            "x": 638,
+            "y": 123,
+            "w": 24,
+            "h": 24
+          }
+        ],
+        "arrows": [
+          {
+            "from": "begin@right",
+            "to": "pending@left",
+            "shape": "line"
+          },
+          {
+            "from": "pending@top",
+            "to": "paid@left",
+            "shape": "arc",
+            "label": "支付成功",
+            "at": [
+              270,
+              112
+            ]
+          },
+          {
+            "from": "pending@bottom",
+            "to": "cancelled@left",
+            "shape": "arc",
+            "label": "超时关闭",
+            "at": [
+              270,
+              358
+            ]
+          },
+          {
+            "from": "paid@right",
+            "to": "done@left",
+            "shape": "line",
+            "label": "订单完成",
+            "at": [
+              589,
+              116
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "order-data-model",
+      "title": "订单数据模型：关系端标记",
+      "note": "ER 与类图词汇：many 鸦脚朝「多」侧，compose 实心菱形与 aggregate 空心菱形贴「整体」侧。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "customer",
+            "label": "客户"
+          },
+          {
+            "id": "order",
+            "label": "订单"
+          },
+          {
+            "id": "item",
+            "label": "订单明细"
+          },
+          {
+            "id": "promo",
+            "label": "促销方案"
+          },
+          {
+            "id": "goods",
+            "label": "商品"
+          }
+        ],
+        "edges": [
+          {
+            "from": "customer",
+            "to": "order",
+            "label": "1:N",
+            "kind": "many"
+          },
+          {
+            "from": "order",
+            "to": "item",
+            "label": "包含",
+            "start": "compose"
+          },
+          {
+            "from": "promo",
+            "to": "goods",
+            "label": "引用",
+            "start": "aggregate"
+          }
+        ]
+      },
+      "diagram": {
+        "boxes": [
+          {
+            "id": "customer",
+            "x": 50,
+            "y": 120,
+            "w": 150,
+            "h": 70,
+            "fill": "sky",
+            "label": "客户"
+          },
+          {
+            "id": "order",
+            "x": 290,
+            "y": 120,
+            "w": 150,
+            "h": 70,
+            "fill": "mint",
+            "label": "订单"
+          },
+          {
+            "id": "item",
+            "x": 540,
+            "y": 120,
+            "w": 150,
+            "h": 70,
+            "fill": "mintSoft",
+            "label": "订单明细"
+          },
+          {
+            "id": "promo",
+            "x": 290,
+            "y": 310,
+            "w": 150,
+            "h": 70,
+            "fill": "amber",
+            "label": "促销方案"
+          },
+          {
+            "id": "goods",
+            "x": 540,
+            "y": 310,
+            "w": 150,
+            "h": 70,
+            "fill": "amberSoft",
+            "label": "商品"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "customer@right",
+            "to": "order@left",
+            "shape": "line",
+            "kind": "many",
+            "label": "1:N",
+            "at": [
+              245,
+              138
+            ]
+          },
+          {
+            "from": "order@right",
+            "to": "item@left",
+            "shape": "line",
+            "start": "compose",
+            "label": "包含",
+            "at": [
+              490,
+              138
+            ]
+          },
+          {
+            "from": "promo@right",
+            "to": "goods@left",
+            "shape": "line",
+            "start": "aggregate",
+            "label": "引用",
+            "at": [
+              490,
+              328
+            ]
+          }
         ]
       }
     }

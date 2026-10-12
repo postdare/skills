@@ -30,9 +30,39 @@
     flow: { color: '#111', open: false },
     async: { color: '#111', open: true },
     reply: { color: '#111', open: true },
-    blocked: { color: '#e0245e', open: false }
+    blocked: { color: '#e0245e', open: false },
+    // many：ER 一对多的鸦脚，落在「多」的一侧（箭头端）；三爪从线尾处张开，与实心箭头共用 6px 落点约定
+    many: { color: '#111', foot: true }
+  };
+  // 起点端标记（UML 类图）：compose 组合实心菱形、aggregate 聚合空心菱形，菱形贴着「整体」一侧的框边
+  const startHeads = {
+    compose: { fill: '#111' },
+    aggregate: { fill: '#fff', stroke: '#111' }
   };
   const arrowKinds = new Set(Object.keys(heads));
+  // 节点图标：24×24 网格的线条图标（stroke 风格，与文字同墨色），box.icon 选用；纯视觉，不进 content
+  const icons = {
+    database: [
+      { d: 'M12 3C6.8 3 3.4 4.5 3.4 6.3v11.4C3.4 19.5 6.8 21 12 21s8.6-1.5 8.6-3.3V6.3C20.6 4.5 17.2 3 12 3Z' },
+      { d: 'M3.4 6.3C3.4 8.1 6.8 9.6 12 9.6s8.6-1.5 8.6-3.3' },
+      { d: 'M3.4 12c0 1.8 3.4 3.3 8.6 3.3s8.6-1.5 8.6-3.3' }
+    ],
+    queue: [
+      { d: 'M3.5 6.5h10.5' }, { d: 'M3.5 12h10.5' }, { d: 'M3.5 17.5h10.5' },
+      { d: 'M15.5 12h5M18.2 9.6 20.6 12l-2.4 2.4' }
+    ],
+    user: [
+      { cx: 12, cy: 7.4, r: 3.6 },
+      { d: 'M4.8 20.4c.6-4.4 3.4-6.6 7.2-6.6s6.6 2.2 7.2 6.6' }
+    ],
+    cloud: [
+      { d: 'M7.2 18.6a4.3 4.3 0 0 1-.8-8.5 5.6 5.6 0 0 1 10.8-1.6 4.1 4.1 0 0 1 1.1 10.1Z' }
+    ],
+    clock: [
+      { cx: 12, cy: 12, r: 8.3 },
+      { d: 'M12 6.6V12l3.6 2.2' }
+    ]
+  };
   const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
 
   // 主节点外形：rect（默认，圆角由 r 控制）、pill（胶囊，两端半圆）、diamond（菱形，判断）、ellipse（椭圆，起止）。
@@ -57,7 +87,8 @@
     const half = { w: shape.w / 2 - inset, h: shape.h / 2 - inset };
     if (half.w <= 0 || half.h <= 0) return false;
     if (kind === 'diamond') return Math.abs(dx) / half.w + Math.abs(dy) / half.h <= 1;
-    if (kind === 'ellipse') return (dx / half.w) ** 2 + (dy / half.h) ** 2 <= 1;
+    // initial/final 起止圆点与椭圆同算法（外接框即圆的外接框）
+    if (kind !== 'rect') return (dx / half.w) ** 2 + (dy / half.h) ** 2 <= 1;
     return Math.abs(dx) < half.w && Math.abs(dy) < half.h;
   }
   // 把外接矩形上的目标点沿「中心→目标」方向推到形状边界：rect 的目标点本来就在边界上
@@ -242,9 +273,18 @@
     for (const [kind, head] of Object.entries(heads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
         const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '8', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
-        element('path', head.open
+        element('path', head.foot
+          ? { d: 'M 8 6 L 12 1.8 M 8 6 L 12 6 M 8 6 L 12 10.2', fill: 'none', stroke: head.color, 'stroke-width': 1.7, 'stroke-linecap': 'round' }
+          : head.open
           ? { d: 'M 0.5 1 L 11.5 6 L 0.5 11', fill: 'none', stroke: head.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }
           : { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: head.color }, marker);
+      }
+    }
+    // 起点菱形 refX=0：菱形从出发边界沿线向前铺开，前尖贴框、身体盖住线头
+    for (const [name, head] of Object.entries(startHeads)) {
+      for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
+        const marker = element('marker', { id: `${prefix}-start-${name}${size}`, viewBox: '0 0 12 12', refX: '0', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+        element('path', { d: 'M 6 0.9 L 11.1 6 L 6 11.1 L 0.9 6 Z', fill: head.fill, stroke: head.stroke ?? 'none', 'stroke-width': 1.4 }, marker);
       }
     }
     const shadow = element('filter', { id: `${prefix}-shadow`, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
@@ -289,18 +329,35 @@
         class: 'slide-shape', fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
         stroke: muted ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none', 'stroke-width': muted ? 1.5 : 3, 'stroke-dasharray': muted ? '6 5' : null
       };
-      if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
+      // initial/final：状态机起止圆点（实心点 / 牛眼），不写文字与角标
+      const dot = kind === 'initial' || kind === 'final';
+      if (kind === 'initial') element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: 'slide-shape', fill: '#111' }, layer);
+      else if (kind === 'final') {
+        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: 'slide-shape', fill: '#fff', stroke: '#111', 'stroke-width': 2.5 }, layer);
+        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2 * 0.55, fill: '#111' }, layer);
+      }
+      else if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
       else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
       else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
+      const icon = icons[box.icon];
+      if (icon && !dot) {
+        // 图标 24×24，占框顶一块；主框标签相应下移，sm 示意框等比缩小、标签不动
+        const scale = small ? 0.5 : 1;
+        const g = element('g', { class: 'slide-icon', transform: `translate(${cx - 12 * scale} ${box.y + (small ? 4 : 10)}) scale(${scale})` }, layer);
+        for (const part of icon) element(part.d !== undefined ? 'path' : 'circle', part, g);
+      }
       const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
-      text(layer, cx, hasValue ? cy - 10 : cy, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
-      if (hasValue) text(layer, cx, cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
+      if (!dot) {
+        const labelY = icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
+        text(layer, cx, labelY, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
+        if (hasValue) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
+      }
       const badge = badges[box.status];
-      if (badge && !small) {
+      if (badge && !small && !dot) {
         const at = badgeCenter(box);
-        element('circle', { cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
+        element('circle', { class: 'slide-badge-dot', cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
         text(layer, at.x, at.y + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
       }
     }
@@ -309,7 +366,9 @@
       const kind = arrowKinds.has(arrow.kind) ? arrow.kind : 'flow';
       const path = element('path', {
         d: route(shapes, arrow, slide.ring, lifelines), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
-        'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`, opacity: arrow.dim ? 0.4 : null
+        'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`,
+        'marker-start': startHeads[arrow.start] ? `url(#${prefix}-start-${arrow.start}${small ? '-sm' : ''})` : null,
+        opacity: arrow.dim ? 0.4 : null
       }, arrowLayer);
       if (arrow.label) {
         let at = arrow.at;

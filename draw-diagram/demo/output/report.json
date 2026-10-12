@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 5,
-      "drawn": 5,
+      "frames": 8,
+      "drawn": 8,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -35,6 +35,24 @@
         },
         {
           "key": "order-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "ops-architecture",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-states",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-data-model",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -44,8 +62,8 @@
     },
     {
       "width": 390,
-      "frames": 5,
-      "drawn": 5,
+      "frames": 8,
+      "drawn": 8,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -75,6 +93,24 @@
         },
         {
           "key": "order-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "ops-architecture",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-states",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-data-model",
           "drawn": true,
           "errors": [],
           "hints": []

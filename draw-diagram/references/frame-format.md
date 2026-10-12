@@ -63,10 +63,11 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 
 ### Boxes
 
-`{id,x,y,w,h,label,fill?,value?,status?,dim?,size?,r?,shape?}`
+`{id,x,y,w,h,label,fill?,value?,status?,dim?,size?,r?,shape?,icon?}`
 
 - `x/y` locate the top-left corner of the bounding box; `w/h` are positive dimensions. `r` overrides the corner radius of a `rect`.
 - `fill` is a named `Diagram.fills` color or a CSS color. Named families are `mint`, `pink`, `violet`, `sky`, `amber`, each with `Soft` and `Pale` variants, plus `gray`. Omitted fill uses mint.
+- `icon` adds a small line pictogram at the top of the box: `database`（存储）、`queue`（消息队列）、`user`（人/角色）、`cloud`（外部系统）、`clock`（定时/调度）. The label shifts down accordingly; budget `h ≥ 80` for icon + label, more with a `value`. Icons are pure visual vocabulary and never enter `content`.
 - `label` supports `\n`; `value` adds a smaller second line. Numeric zero renders. Keep line wrapping intentional.
 - `error`, `ok` and `warn` add a badge; `muted` adds gray fill and dashed outline. `dim: true` reduces opacity independently.
 - `size: "sm"` is for an illustration only: smaller text/corners, no value or badge. It is exempt from semantic node comparison and cannot satisfy a required content node.
@@ -81,6 +82,8 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `pill` | Stadium (fully rounded ends) | Terminal/state tag such as `上线` | `r` ignored; ends use half the shorter side |
 | `diamond` | Rhombus | Decision with two or more branches | `r` ignored; four sharp vertices |
 | `ellipse` | Ellipse | Start/end terminator | `r` ignored |
+| `initial` | Filled dot | State-machine initial pseudostate | No label/value/badge; keep `w = h` ≈ 24; the matching content node carries an empty label |
+| `final` | Bullseye (ring + filled core) | State-machine final pseudostate | Same rules as `initial` |
 
 Shape changes the outline, the usable text area, the anchor points and the badge position, while `x/y/w/h` stay the bounding box every other computation uses:
 
@@ -120,7 +123,9 @@ For `line`, `arc` and `elbow`, use `id@side[:ratio]`; side is `top`, `right`, `b
   - `async` — asynchronous message: solid line, **open** arrowhead.
   - `reply` — return/response: **dashed** line, **open** arrowhead.
   - `blocked` — blocked/failed path: red dashed line, filled arrowhead.
+  - `many` — ER one-to-many: solid line with a **crow's foot** on the arrow end; point it at the "many" side.
   The filled-vs-open arrowhead split between calls and returns follows UML interaction diagrams; use it whenever a diagram distinguishes requests from responses.
+- `start`: decoration on the **source** end, also semantic (the same value must appear in `content.edges`): `compose`（组合，实心菱形贴整体一侧）、`aggregate`（聚合，空心菱形贴整体一侧）. Point the arrow from the whole to the part.
 - `label`: relationship text. `at: [x,y]` sets its position; omitted at offsets the path midpoint, without collision avoidance. `anchor` accepts `start`, `middle` or `end`. `side` reverses automatic midpoint offset when negative.
 - `size: "sm"`: illustration arrow, smaller stroke/marker and exempt from semantic edge comparison. Set this on each illustration arrow explicitly. Main arrows do not become illustrations merely because one endpoint is small.
 
