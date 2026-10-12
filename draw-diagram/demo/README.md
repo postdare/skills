@@ -18,13 +18,13 @@
   ![巡检架构](output/ops-architecture.svg)
 - 订单状态机：`initial`/`final` 起止圆点，迁移条件标注在边上，终态 muted。
   ![订单状态机](output/order-states.svg)
-- 订单数据模型：关系端标记——`many` 鸦脚朝多侧，`compose`/`aggregate` 菱形贴整体侧。
+- 订单数据模型：标准 ER——实体 rows 三列（键标记/列名/类型），`start: "one"` 短杠贴「一」侧、`many` 鸦脚贴「多」侧。
   ![订单数据模型](output/order-data-model.svg)
-- 审批泳道：三条全宽 group 泳道（提交人/审核人/财务），菱形判断跨道分支，驳回线经右侧回到提交人道。
+- 审批泳道：三条竖向 group 泳道（提交人/审核人/财务，标题在道顶），流程自上而下，跨道横向走线、道内纵向走线。
   ![审批泳道](output/approval-swimlane.svg)
 - 订单类图：类盒 `fields`/`methods` 分栏（标签加粗置顶、分栏逐行左对齐），配 `many` 鸦脚与 `compose` 菱形。
   ![订单类图](output/order-class.svg)
-- 转化漏斗：四个 `shape: "trapezoid"` 居中堆叠，宽度按约 0.76 倍递减使上下边缘连续，value 写量级、转化率标在边上。
+- 转化漏斗：四个 `shape: "trapezoid"` 居中堆叠，宽度按约 0.76 倍递减使上下边缘连续，value 写量级；阶段间不画箭头，转化率以 notes 标注在间隙中线右侧。
   ![转化漏斗](output/conversion-funnel.svg)
 - 分层架构：接入/服务/数据三层全宽 group 堆叠，上层依赖下层，数据层带 `database` 图标。
   ![分层架构](output/layered-architecture.svg)
@@ -67,9 +67,9 @@ python3 "$SKILL/scripts/sheet.py" "$OUT" 390
 先读取通用技能的流程及按分支需要的参考文件；保留来源中的全部节点、边标签与状态。
 审核分支按语义选形状：椭圆做起止、矩形做步骤、菱形做判断、胶囊做状态，尺寸按内接区域预留。
 下单时序用时序风格：参与者带生命线，消息按时间编号，请求/应答按 UML 惯例区分 kind（flow 实线实心、reply 虚线开放）。
-巡检架构按角色给节点加 icon（user/clock/queue/database/cloud）；订单状态机用 initial/final 起止圆点；订单数据模型用 many 鸦脚与 compose/aggregate 菱形。
-审批泳道用三条全宽 group 泳道、标题在左、流向跨道；分层架构用三个全宽 group 纵向堆叠、上层依赖下层；优先级四象限用 2×2 group 加十字空隙与轴 notes。
-订单类图用 fields/methods 分栏（content 与图稿保持一致），配 many 鸦脚与 compose 菱形；转化漏斗用 trapezoid 宽度递减堆叠，value 写量级、转化率标在边上。
+巡检架构按角色给节点加 icon（user/clock/queue/database/cloud）；订单状态机用 initial/final 起止圆点；订单数据模型用标准 ER：实体 rows 三列（键标记/列名/类型），1:N 关系 start one 短杠加 many 鸦脚。
+审批泳道用三条竖向 group 泳道、标题在道顶、流程自上而下，跨道连线横向、道内连线纵向；分层架构用三个全宽 group 纵向堆叠、上层依赖下层；优先级四象限用 2×2 group 加十字空隙与轴 notes。
+订单类图用 fields/methods 分栏（content 与图稿保持一致），配 many 鸦脚与 compose 菱形；转化漏斗用 trapezoid 宽度递减堆叠，value 写量级、阶段间不画箭头、转化率用 notes 标注。
 输出到一个独立目录，交付自包含 SVG、预览、检查报告和最新审图表。
 以桌面细读为主要展示场景，同时提供 390px 截图并说明窄屏可读性限制。
 ```

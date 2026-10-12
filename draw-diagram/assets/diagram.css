@@ -6,6 +6,9 @@
 .slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
 /* 类图分栏：成员行左对齐小字，分隔线为压暗细线 */
 .slide text.slide-box-member { font-size: 13px; font-weight: 500; fill: #1d2125; text-anchor: start; }
+/* ER 行三列：key 列加粗，type 列压暗并右对齐（与 member 同优先级、靠后出现以覆盖 text-anchor） */
+.slide text.slide-box-key { font-weight: 600; }
+.slide text.slide-box-type { fill: #5d6670; text-anchor: end; }
 .slide-box-divider { stroke: #111; stroke-width: 1.2; opacity: .25; }
 .slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }
 /* 节点图标：与文字同墨色的线条图标，位于框顶，不占语义 */

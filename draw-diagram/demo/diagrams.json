@@ -977,29 +977,76 @@
     },
     {
       "id": "order-data-model",
-      "title": "订单数据模型：关系端标记",
-      "note": "ER 与类图词汇：many 鸦脚朝「多」侧，compose 实心菱形与 aggregate 空心菱形贴「整体」侧。来源：demo/brief.md。",
+      "title": "订单数据模型：标准 ER",
+      "note": "标准 ER：实体用 rows 三列（键标记/列名/类型），1:N 关系起点短杠（start one）贴「一」侧、终点鸦脚（kind many）贴「多」侧，直线横排相连。来源：demo/brief.md。",
       "content": {
         "nodes": [
           {
             "id": "customer",
-            "label": "客户"
+            "label": "客户",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "name": "phone",
+                "type": "citext"
+              }
+            ]
           },
           {
             "id": "order",
-            "label": "订单"
+            "label": "订单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "total_amount",
+                "type": "numeric"
+              },
+              {
+                "name": "status",
+                "type": "citext"
+              }
+            ]
           },
           {
             "id": "item",
-            "label": "订单明细"
-          },
-          {
-            "id": "promo",
-            "label": "促销方案"
-          },
-          {
-            "id": "goods",
-            "label": "商品"
+            "label": "订单明细",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "item_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "name": "quantity",
+                "type": "integer"
+              },
+              {
+                "name": "unit_price",
+                "type": "numeric"
+              }
+            ]
           }
         ],
         "edges": [
@@ -1007,19 +1054,15 @@
             "from": "customer",
             "to": "order",
             "label": "1:N",
-            "kind": "many"
+            "kind": "many",
+            "start": "one"
           },
           {
             "from": "order",
             "to": "item",
-            "label": "包含",
-            "start": "compose"
-          },
-          {
-            "from": "promo",
-            "to": "goods",
-            "label": "引用",
-            "start": "aggregate"
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
           }
         ]
       },
@@ -1027,48 +1070,85 @@
         "boxes": [
           {
             "id": "customer",
-            "x": 50,
-            "y": 120,
-            "w": 150,
-            "h": 70,
+            "x": 20,
+            "y": 160,
+            "w": 200,
+            "h": 130,
             "fill": "sky",
-            "label": "客户"
+            "label": "客户",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "name": "phone",
+                "type": "citext"
+              }
+            ]
           },
           {
             "id": "order",
             "x": 290,
-            "y": 120,
-            "w": 150,
-            "h": 70,
+            "y": 150,
+            "w": 240,
+            "h": 150,
             "fill": "mint",
-            "label": "订单"
+            "label": "订单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "total_amount",
+                "type": "numeric"
+              },
+              {
+                "name": "status",
+                "type": "citext"
+              }
+            ]
           },
           {
             "id": "item",
-            "x": 540,
-            "y": 120,
-            "w": 150,
-            "h": 70,
+            "x": 600,
+            "y": 150,
+            "w": 200,
+            "h": 150,
             "fill": "mintSoft",
-            "label": "订单明细"
-          },
-          {
-            "id": "promo",
-            "x": 290,
-            "y": 310,
-            "w": 150,
-            "h": 70,
-            "fill": "amber",
-            "label": "促销方案"
-          },
-          {
-            "id": "goods",
-            "x": 540,
-            "y": 310,
-            "w": 150,
-            "h": 70,
-            "fill": "amberSoft",
-            "label": "商品"
+            "label": "订单明细",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "item_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "name": "quantity",
+                "type": "integer"
+              },
+              {
+                "name": "unit_price",
+                "type": "numeric"
+              }
+            ]
           }
         ],
         "arrows": [
@@ -1077,41 +1157,33 @@
             "to": "order@left",
             "shape": "line",
             "kind": "many",
+            "start": "one",
             "label": "1:N",
             "at": [
-              245,
-              138
+              255,
+              211
             ]
           },
           {
             "from": "order@right",
             "to": "item@left",
             "shape": "line",
-            "start": "compose",
-            "label": "包含",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
             "at": [
-              490,
-              138
-            ]
-          },
-          {
-            "from": "promo@right",
-            "to": "goods@left",
-            "shape": "line",
-            "start": "aggregate",
-            "label": "引用",
-            "at": [
-              490,
-              328
+              565,
+              211
             ]
           }
-        ]
+        ],
+        "w": 820
       }
     },
     {
       "id": "approval-swimlane",
       "title": "审批泳道",
-      "note": "泳道：三条全宽横向泳道（提交人/审核人/财务），菱形判断在审核人道，通过向下、驳回经右侧回提交人道。来源：demo/brief.md。",
+      "note": "泳道：三条竖向泳道（提交人/审核人/财务，标题在道顶），流程自上而下；跨道连线横向、道内连线纵向，走线横平竖直。来源：demo/brief.md。",
       "content": {
         "nodes": [
           {
@@ -1168,26 +1240,26 @@
             "id": "lane-submitter",
             "x": 14,
             "y": 14,
-            "w": 792,
-            "h": 130,
+            "w": 260,
+            "h": 422,
             "title": "提交人",
             "titleY": 22
           },
           {
             "id": "lane-reviewer",
-            "x": 14,
-            "y": 160,
-            "w": 792,
-            "h": 130,
+            "x": 280,
+            "y": 14,
+            "w": 260,
+            "h": 422,
             "title": "审核人",
             "titleY": 22
           },
           {
             "id": "lane-finance",
-            "x": 14,
-            "y": 306,
-            "w": 792,
-            "h": 130,
+            "x": 546,
+            "y": 14,
+            "w": 260,
+            "h": 422,
             "title": "财务",
             "titleY": 22
           }
@@ -1195,8 +1267,8 @@
         "boxes": [
           {
             "id": "submit",
-            "x": 110,
-            "y": 50,
+            "x": 69,
+            "y": 60,
             "w": 150,
             "h": 62,
             "fill": "mint",
@@ -1204,8 +1276,8 @@
           },
           {
             "id": "rework",
-            "x": 560,
-            "y": 50,
+            "x": 69,
+            "y": 189,
             "w": 150,
             "h": 62,
             "fill": "amber",
@@ -1213,18 +1285,18 @@
           },
           {
             "id": "review",
-            "x": 110,
-            "y": 185,
+            "x": 305,
+            "y": 165,
             "w": 210,
-            "h": 100,
+            "h": 110,
             "fill": "violet",
             "shape": "diamond",
             "label": "审核通过？"
           },
           {
             "id": "pay",
-            "x": 140,
-            "y": 368,
+            "x": 601,
+            "y": 189,
             "w": 150,
             "h": 62,
             "fill": "pink",
@@ -1233,35 +1305,44 @@
         ],
         "arrows": [
           {
-            "from": "submit@bottom",
-            "to": "review@top",
-            "shape": "line"
-          },
-          {
-            "from": "review@bottom",
-            "to": "pay@top",
-            "shape": "line",
-            "label": "通过",
-            "at": [
-              233,
-              318
-            ],
-            "anchor": "start"
+            "from": "submit@right",
+            "to": "review@left",
+            "shape": "elbow",
+            "via": [
+              [
+                287,
+                91
+              ]
+            ]
           },
           {
             "from": "review@right",
+            "to": "pay@left",
+            "shape": "line",
+            "label": "通过",
+            "at": [
+              572,
+              205
+            ]
+          },
+          {
+            "from": "review@bottom",
             "to": "rework@bottom",
             "shape": "elbow",
             "via": [
               [
-                635,
-                235
+                410,
+                330
+              ],
+              [
+                144,
+                330
               ]
             ],
             "label": "驳回",
             "at": [
-              480,
-              218
+              345,
+              316
             ]
           }
         ]
@@ -1396,7 +1477,7 @@
     {
       "id": "conversion-funnel",
       "title": "转化漏斗",
-      "note": "漏斗：四个 trapezoid 垂直居中堆叠，宽度按约 0.76 倍递减使上下边缘连续；value 写量级，转化率标在边上。来源：demo/brief.md。",
+      "note": "漏斗：四个 trapezoid 垂直居中堆叠，宽度按约 0.76 倍递减使上下边缘连续；value 写量级，阶段间不画箭头，转化率由相邻阶段量级派生、以 notes 标注在间隙中线右侧。来源：demo/brief.md。",
       "content": {
         "nodes": [
           {
@@ -1420,23 +1501,7 @@
             "value": "180"
           }
         ],
-        "edges": [
-          {
-            "from": "expose",
-            "to": "click",
-            "label": "30%"
-          },
-          {
-            "from": "click",
-            "to": "signup",
-            "label": "25%"
-          },
-          {
-            "from": "signup",
-            "to": "pay",
-            "label": "20%"
-          }
-        ]
+        "edges": []
       },
       "diagram": {
         "w": 720,
@@ -1447,7 +1512,7 @@
             "x": 160,
             "y": 12,
             "w": 400,
-            "h": 56,
+            "h": 64,
             "fill": "violet",
             "shape": "trapezoid",
             "label": "曝光",
@@ -1456,9 +1521,9 @@
           {
             "id": "click",
             "x": 208,
-            "y": 136,
+            "y": 120,
             "w": 304,
-            "h": 56,
+            "h": 64,
             "fill": "sky",
             "shape": "trapezoid",
             "label": "点击",
@@ -1467,9 +1532,9 @@
           {
             "id": "signup",
             "x": 244,
-            "y": 260,
+            "y": 228,
             "w": 232,
-            "h": 56,
+            "h": 64,
             "fill": "mint",
             "shape": "trapezoid",
             "label": "注册",
@@ -1478,45 +1543,34 @@
           {
             "id": "pay",
             "x": 272,
-            "y": 384,
+            "y": 336,
             "w": 176,
-            "h": 56,
+            "h": 64,
             "fill": "amber",
             "shape": "trapezoid",
             "label": "付费",
             "value": "180"
           }
         ],
-        "arrows": [
+        "arrows": [],
+        "notes": [
           {
-            "from": "expose@bottom",
-            "to": "click@top",
-            "shape": "line",
-            "label": "30%",
-            "at": [
-              398,
-              102
-            ]
+            "x": 400,
+            "y": 84,
+            "text": "30%",
+            "anchor": "start"
           },
           {
-            "from": "click@bottom",
-            "to": "signup@top",
-            "shape": "line",
-            "label": "25%",
-            "at": [
-              398,
-              226
-            ]
+            "x": 400,
+            "y": 192,
+            "text": "25%",
+            "anchor": "start"
           },
           {
-            "from": "signup@bottom",
-            "to": "pay@top",
-            "shape": "line",
-            "label": "20%",
-            "at": [
-              398,
-              350
-            ]
+            "x": 400,
+            "y": 300,
+            "text": "20%",
+            "anchor": "start"
           }
         ]
       }

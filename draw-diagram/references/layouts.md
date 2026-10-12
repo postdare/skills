@@ -101,10 +101,10 @@ Rules that keep a sequence frame readable:
 
 Use it when the same process is **executed by different roles or systems in turn** — approvals, escalations, handoffs. Start from `DIAGRAM_TEMPLATES.swimlane3` and replace its placeholders.
 
-- **A lane is a full-width group.** Tile the canvas with horizontal groups, one per role (three lanes of ~130 height fill an 820×450 canvas). The group `title` is the role name, stays at the left of the lane, and is a semantic node in `content.nodes`.
-- **Nodes are normal boxes inside their owner's lane**; a decision keeps the usual `diamond` sizing rules (see [frame-format.md](frame-format.md)).
-- **Crossing lane borders is the point.** Flow arrows run straight or elbow across group outlines into the next lane; a line crossing a lane boundary is expected, not a defect — like messages crossing lifelines. Align successive steps on one x where possible so cross-lane segments stay vertical.
-- Park branch labels just beside their own segment, inside the lane where the branch starts.
+- **A lane is a full-height vertical group.** Tile the canvas side by side with vertical groups, one per role (three lanes of 260 width fill an 820×450 canvas). The group `title` is the role name, stays at the **top** of the lane, and is a semantic node in `content.nodes`.
+- **Time runs down the lanes.** Nodes are normal boxes inside their owner's lane, ordered top to bottom; a decision keeps the usual `diamond` sizing rules (see [frame-format.md](frame-format.md)).
+- **Crossing lane borders is the point.** In-lane segments run vertical, cross-lane segments run horizontal; use `line` for straight runs and `elbow` (with `via`) so every segment stays axis-aligned. A line crossing a lane boundary is expected, not a defect — like messages crossing lifelines.
+- Park branch labels just beside their own segment, inside the lane where the segment runs.
 
 ## Layered stack: dependencies point down
 
@@ -128,15 +128,16 @@ Use it when a population **shrinks through ordered stages** — conversion, scre
 
 - **Each stage is a `shape: "trapezoid"` box**, stacked vertically and centred on one axis. The bottom edge insets 12% per side, so choose widths with `w(n+1) ≈ 0.76 × w(n)` — then each stage's bottom edge lands flush on the next stage's top edge and the stack reads as one continuous funnel.
 - **The stage `value` carries the magnitude** (e.g. `12000`); the label names the stage. Both go in `content.nodes`.
-- **Conversion rates are edge labels** on the short `line` arrows between stages (`@bottom` → `@top`), placed beside the segment with `at`, not on it.
+- **No arrows between stages.** The stacking order already says the direction; conversion rates are derived from adjacent stages' magnitudes and placed as `notes` beside the gap's centerline (e.g. `x ≈ 400`, `y` at the gap midpoint), never as edge labels.
 
-## Class boxes: fields and methods compartments
+## Class boxes and ER entities
 
-Use it for **class structure** — types with attributes and operations plus their relations.
+Use it for **class structure** (types with attributes and operations) and **data models** (entities with columns) plus their relations.
 
 - **A class is a `rect` box with `fields`/`methods` arrays.** The label renders bold at the top, then a divider, then field rows, another divider, then method rows; rows are left-aligned at 20-unit pitch. Budget box height as 24 (label) + 16 (divider) + 20 × rows; omitting both arrays renders exactly like a plain box.
-- **Repeat the same `fields`/`methods` arrays in `content.nodes`.** The semantic checker compares them element-wise with whitespace stripped; a difference — including declaring them on only one side — is an error.
-- **Relations reuse the existing vocabulary**: `kind: "many"` for 1:N with the crow's foot on the many side, `start: "compose"`/`"aggregate"` with the diamond on the whole side. Connect boxes edge-to-edge with straight `line` routes and align the compartment boxes on a shared centerline.
+- **An ER entity is a `rect` box with a `rows` array** of `{key?, name, type?}`: the key column (`PK`/`FK`) sits left of a vertical divider, the column name next to it, and the type right-aligned. Budget box height as `67 + 20 × rows` and width for the name and type columns; `rows` replaces `fields`/`methods` (declaring both renders `rows`).
+- **Repeat the same `fields`/`methods`/`rows` arrays in `content.nodes`.** The semantic checker compares them element-wise with whitespace stripped; a difference — including declaring them on only one side — is an error.
+- **Relations reuse the existing vocabulary**: `kind: "many"` for 1:N with the crow's foot on the many side, `start: "compose"`/`"aggregate"` with the diamond on the whole side. Standard ER (Crow's Foot) cardinality pairs a bar on the "one" side with a crow's foot on the "many" side: `kind: "one"`/`"many"` set the arrow-end marker, `start: "one"`/`"many"` set the source-end marker — e.g. `{from: 'customer', to: 'order', start: 'one', kind: 'many', label: '1:N'}`. Connect boxes edge-to-edge with straight `line` routes and align the compartment boxes on a shared centerline.
 
 ## Composition rules
 

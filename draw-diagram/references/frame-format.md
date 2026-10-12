@@ -43,7 +43,7 @@ Keep `content` independent of layout: changing wording, status or relationships 
 
 The status must match exactly; `error`, `ok`, `warn` and `muted` are supported visual statuses. Omitted status means none. `dim` is visual de-emphasis only and does not replace `status: "muted"`.
 
-Edges match by endpoint IDs, whitespace-normalized label and kind, with multiplicity preserved. Parallel edges with different labels are distinct, and repeated identical edges require repeated arrows. Omitted kind means `flow`; `blocked` must match explicitly. Missing and extra main arrows are errors, including label/kind differences.
+Edges match by endpoint IDs, whitespace-normalized label, kind and start, with multiplicity preserved. Parallel edges with different labels are distinct, and repeated identical edges require repeated arrows. Omitted kind means `flow`; `blocked` must match explicitly. Missing and extra main arrows are errors, including label/kind differences.
 
 ## Diagram
 
@@ -69,6 +69,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 - `fill` is a named `Diagram.fills` color or a CSS color. Named families are `mint`, `pink`, `violet`, `sky`, `amber`, each with `Soft` and `Pale` variants, plus `gray`. Omitted fill uses mint.
 - `icon` adds a small line pictogram at the top of the box: `database`（存储）、`queue`（消息队列）、`user`（人/角色）、`cloud`（外部系统）、`clock`（定时/调度）. The label shifts down accordingly; budget `h ≥ 80` for icon + label, more with a `value`. Icons are pure visual vocabulary and never enter `content`.
 - `fields?: string[]` and `methods?: string[]` turn the box into a UML-style class box: the label moves to the top, a divider follows, then left-aligned member rows, another divider, then the method rows. Layout: label at `y+24`, first divider at `y+38`, rows at `y+58 + i*20` (13px); budget `h ≥ 67 + 20 × (行数)`. Members are semantic: `content` nodes must declare the same arrays (whitespace-normalized, elementwise). Compartments render only on main boxes and do not combine with `value` or `icon`.
+- `rows?: [{key?, name, type?}]` turns the box into an ER entity table: the label renders bold and centered at `y+24`, a horizontal divider at `y+38`, then one row per entry at baseline `y+58 + i*20` — `key` left-aligned at `x+10`, `name` left-aligned at `x+56`, `type` right-aligned at `x+w-12` — plus a vertical divider at `x+48` from `y+38` to `y+h-8` separating the key column. Budget `h ≥ 67 + 20 × (行数)` and enough width for the name and type columns. `rows` is mutually exclusive with `fields`/`methods` (when both appear, `rows` wins), keeps `data-shape="rect"`, and is semantic like members: `content` nodes must declare the same entries (`key`/`name`/`type` whitespace-normalized, elementwise; missing and empty compare equal).
 - `label` supports `\n`; `value` adds a smaller second line. Numeric zero renders. Keep line wrapping intentional.
 - `error`, `ok` and `warn` add a badge; `muted` adds gray fill and dashed outline. `dim: true` reduces opacity independently.
 - `size: "sm"` is for an illustration only: smaller text/corners, no value or badge. It is exempt from semantic node comparison and cannot satisfy a required content node.
@@ -126,8 +127,9 @@ For `line`, `arc` and `elbow`, use `id@side[:ratio]`; side is `top`, `right`, `b
   - `reply` — return/response: **dashed** line, **open** arrowhead.
   - `blocked` — blocked/failed path: red dashed line, filled arrowhead.
   - `many` — ER one-to-many: solid line with a **crow's foot** on the arrow end; point it at the "many" side.
+  - `one` — ER mandatory-one: solid line with a **short perpendicular bar** on the arrow end instead of an arrowhead; the bar lands flush on the box boundary.
   The filled-vs-open arrowhead split between calls and returns follows UML interaction diagrams; use it whenever a diagram distinguishes requests from responses.
-- `start`: decoration on the **source** end, also semantic (the same value must appear in `content.edges`): `compose`（组合，实心菱形贴整体一侧）、`aggregate`（聚合，空心菱形贴整体一侧）. Point the arrow from the whole to the part.
+- `start`: decoration on the **source** end, also semantic (the same value must appear in `content.edges`): `compose`（组合，实心菱形贴整体一侧）、`aggregate`（聚合，空心菱形贴整体一侧）、`one`（ER「一」侧，短杠贴源头一侧）、`many`（ER「多」侧，鸦脚扇向源头框）. Point the arrow from the whole to the part for the diamonds, and from the "one" side to the "many" side for ER cardinality pairs.
 - `label`: relationship text. `at: [x,y]` sets its position; omitted at offsets the path midpoint, without collision avoidance. `anchor` accepts `start`, `middle` or `end`. `side` reverses automatic midpoint offset when negative.
 - `size: "sm"`: illustration arrow, smaller stroke/marker and exempt from semantic edge comparison. Set this on each illustration arrow explicitly. Main arrows do not become illustrations merely because one endpoint is small.
 

@@ -254,6 +254,17 @@
           errors.push(`Different ${list}: ${node.id}; content [${(node[list] || []).join(', ')}], diagram [${(shape[list] || []).join(', ')}]`);
         }
       }
+      // rows 数组逐行比对：key/name/type 各字段去全部空白，缺失字段视为 ''；未声明与空数组等价
+      const rowsOf = shape => (shape.rows || []).map(row => ({ key: normalize(row.key), name: normalize(row.name), type: normalize(row.type) }));
+      const rowsText = rows => rows.map(row => [row.key, row.name, row.type].filter(Boolean).join(' ')).join(', ');
+      const diagramRows = rowsOf(shape);
+      const contentRows = rowsOf(node);
+      if (diagramRows.length !== contentRows.length || diagramRows.some((row, index) => {
+        const other = contentRows[index];
+        return row.key !== other.key || row.name !== other.name || row.type !== other.type;
+      })) {
+        errors.push(`Different rows: ${node.id}; content [${rowsText(contentRows)}], diagram [${rowsText(diagramRows)}]`);
+      }
       if (statusOf(shape) !== statusOf(node)) {
         errors.push(`Different status: ${node.id}; content ${statusOf(node) || 'none'}, diagram ${statusOf(shape) || 'none'}`);
       }

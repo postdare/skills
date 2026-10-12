@@ -177,35 +177,35 @@ window.DIAGRAM_TEMPLATES = {
       { from: 'p2@life:290', to: 'p2@life:340', bend: 70, label: '自处理', at: [305, 315] }
     ]
   },
-  // 泳道 · 三条：全宽 group 横铺满画布，流程跨道上下走
+  // 泳道 · 三条竖道：全高 group 并排铺满 820×450，流程自上而下，跨道横向走线、道内纵向走线
   swimlane3: {
+    w: 820, h: 450,
     groups: [
-      { id: 'lane1', x: 14, y: 14, w: 692, h: 130, title: '角色 A', titleY: 22 },
-      { id: 'lane2', x: 14, y: 160, w: 692, h: 130, title: '角色 B', titleY: 22 },
-      { id: 'lane3', x: 14, y: 306, w: 692, h: 130, title: '角色 C', titleY: 22 }
+      { id: 'lane1', x: 14, y: 14, w: 260, h: 422, title: '角色 A', titleY: 22 },
+      { id: 'lane2', x: 280, y: 14, w: 260, h: 422, title: '角色 B', titleY: 22 },
+      { id: 'lane3', x: 546, y: 14, w: 260, h: 422, title: '角色 C', titleY: 22 }
     ],
     boxes: [
-      { id: 'a', x: 110, y: 50, w: 150, h: 62, fill: 'mint', label: '第一步' },
-      { id: 'b', x: 110, y: 196, w: 150, h: 62, fill: 'violet', label: '第二步' },
-      { id: 'c', x: 110, y: 342, w: 150, h: 62, fill: 'pink', label: '第三步' }
+      { id: 'a', x: 69, y: 60, w: 150, h: 62, fill: 'mint', label: '第一步' },
+      { id: 'b', x: 335, y: 190, w: 150, h: 62, fill: 'violet', label: '第二步' },
+      { id: 'c', x: 601, y: 320, w: 150, h: 62, fill: 'pink', label: '第三步' }
     ],
     arrows: [
-      { from: 'a@bottom', to: 'b@top', shape: 'line' },
-      { from: 'b@bottom', to: 'c@top', shape: 'line', label: '交给', at: [203, 304], anchor: 'start' }
+      { from: 'a@right', to: 'b@left', shape: 'elbow', via: [[301, 91]] },
+      { from: 'b@right', to: 'c@left', shape: 'elbow', via: [[567, 221]], label: '交给', at: [520, 205], anchor: 'start' }
     ]
   },
-  // 漏斗 · 四段：trapezoid 居中堆叠，宽度按约 0.76 倍递减使下缘与下一段上缘连续
+  // 漏斗 · 四段：trapezoid 居中堆叠，宽度按约 0.76 倍递减使下缘与下一段上缘连续；阶段间不画箭头，转化率用 notes 放在间隙中线右侧
   funnel4: {
     boxes: [
-      { id: 's1', x: 160, y: 76, w: 400, h: 64, fill: 'violet', shape: 'trapezoid', label: '第一段', value: '量级' },
-      { id: 's2', x: 208, y: 154, w: 304, h: 64, fill: 'sky', shape: 'trapezoid', label: '第二段' },
-      { id: 's3', x: 244, y: 232, w: 232, h: 64, fill: 'mint', shape: 'trapezoid', label: '第三段' },
-      { id: 's4', x: 272, y: 310, w: 176, h: 64, fill: 'amber', shape: 'trapezoid', label: '第四段' }
+      { id: 's1', x: 160, y: 12, w: 400, h: 64, fill: 'violet', shape: 'trapezoid', label: '第一段', value: '量级' },
+      { id: 's2', x: 208, y: 120, w: 304, h: 64, fill: 'sky', shape: 'trapezoid', label: '第二段' },
+      { id: 's3', x: 244, y: 228, w: 232, h: 64, fill: 'mint', shape: 'trapezoid', label: '第三段' },
+      { id: 's4', x: 272, y: 336, w: 176, h: 64, fill: 'amber', shape: 'trapezoid', label: '第四段' }
     ],
-    arrows: [
-      { from: 's1@bottom', to: 's2@top', shape: 'line', label: '转化', at: [378, 150], anchor: 'start' },
-      { from: 's2@bottom', to: 's3@top', shape: 'line' },
-      { from: 's3@bottom', to: 's4@top', shape: 'line' }
+    arrows: [],
+    notes: [
+      { x: 400, y: 84, text: '转化', anchor: 'start' }
     ]
   }
 };

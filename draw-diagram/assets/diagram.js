@@ -32,12 +32,17 @@
     reply: { color: '#111', open: true },
     blocked: { color: '#e0245e', open: false },
     // many：ER 一对多的鸦脚，落在「多」的一侧（箭头端）；三爪从线尾处张开，与实心箭头共用 6px 落点约定
-    many: { color: '#111', foot: true }
+    many: { color: '#111', foot: true },
+    // one：ER「一」侧的端部短杠；refX=11 让竖杠正好压在框边界上（route 中末端 gap 取 0）
+    one: { color: '#111', bar: true, refX: 11 }
   };
-  // 起点端标记（UML 类图）：compose 组合实心菱形、aggregate 聚合空心菱形，菱形贴着「整体」一侧的框边
+  // 起点端标记：compose/aggregate 为 UML 类图菱形（贴着「整体」一侧的框边），
+  // one/many 为 ER 起点端的短杠/鸦脚（扇向源头框）；每项自带 path 与样式，marker refX=0 沿路径向前铺开
   const startHeads = {
-    compose: { fill: '#111' },
-    aggregate: { fill: '#fff', stroke: '#111' }
+    compose: { d: 'M 6 0.9 L 11.1 6 L 6 11.1 L 0.9 6 Z', fill: '#111', stroke: 'none', width: 1.4 },
+    aggregate: { d: 'M 6 0.9 L 11.1 6 L 6 11.1 L 0.9 6 Z', fill: '#fff', stroke: '#111', width: 1.4 },
+    one: { d: 'M 0.8 0.8 L 0.8 11.2', fill: 'none', stroke: '#111', width: 2.4 },
+    many: { d: 'M 11.2 6 L 0.8 1.8 M 11.2 6 L 0.8 6 M 11.2 6 L 0.8 10.2', fill: 'none', stroke: '#111', width: 1.7, linecap: 'round' }
   };
   const arrowKinds = new Set(Object.keys(heads));
   // 节点图标：24×24 网格的线条图标（stroke 风格，与文字同墨色），box.icon 选用；纯视觉，不进 content
@@ -243,7 +248,8 @@
     if (!start.direction) start.direction = self ? { x: 1, y: 0 } : { x: Math.sign(end.point.x - start.point.x) || 1, y: 0 };
     if (!end.direction) end.direction = self ? { x: 1, y: 0 } : { x: Math.sign(start.point.x - end.point.x) || 1, y: 0 };
     // 与箭头标记 refX=8 对应：实心尖端越过线尾 (12−8)×1.5×scale，开放尖端 5.25×scale，刚好落到边界上
-    const gap = arrow.size === 'sm' ? 3.3 : 6;
+    // kind one 的短杠 refX=11 即线尾本身，gap 取 0 让短杠正好落在边界上
+    const gap = arrow.kind === 'one' ? 0 : (arrow.size === 'sm' ? 3.3 : 6);
     const from = start.point;
     const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
     const inward = { x: -end.direction.x, y: -end.direction.y };
@@ -306,19 +312,21 @@
     const defs = element('defs', {}, svg);
     for (const [kind, head] of Object.entries(heads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
-        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '8', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
-        element('path', head.foot
+        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: String(head.refX ?? 8), refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+        element('path', head.bar
+          ? { d: 'M 11 0.8 L 11 11.2', fill: 'none', stroke: head.color, 'stroke-width': 2.4 }
+          : head.foot
           ? { d: 'M 8 6 L 12 1.8 M 8 6 L 12 6 M 8 6 L 12 10.2', fill: 'none', stroke: head.color, 'stroke-width': 1.7, 'stroke-linecap': 'round' }
           : head.open
           ? { d: 'M 0.5 1 L 11.5 6 L 0.5 11', fill: 'none', stroke: head.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }
           : { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: head.color }, marker);
       }
     }
-    // 起点菱形 refX=0：菱形从出发边界沿线向前铺开，前尖贴框、身体盖住线头
+    // 起点端标记 refX=0：标记从出发边界沿线向前铺开，前端贴框、身体盖住线头；path 与样式由各项自带
     for (const [name, head] of Object.entries(startHeads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
         const marker = element('marker', { id: `${prefix}-start-${name}${size}`, viewBox: '0 0 12 12', refX: '0', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
-        element('path', { d: 'M 6 0.9 L 11.1 6 L 6 11.1 L 0.9 6 Z', fill: head.fill, stroke: head.stroke ?? 'none', 'stroke-width': 1.4 }, marker);
+        element('path', { d: head.d, fill: head.fill, stroke: head.stroke, 'stroke-width': head.width, 'stroke-linecap': head.linecap ?? null }, marker);
       }
     }
     const shadow = element('filter', { id: `${prefix}-shadow`, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
@@ -386,13 +394,27 @@
       const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
       // 类图分栏：fields/methods 存在时标签置顶（y+24 加粗沿用 slide-box-label），其下分隔线，
       // fields 逐行左对齐（行距 20），再分隔线，再 methods 逐行；sm 示意框忽略分栏。
-      const sectioned = !small && !dot && ((box.fields && box.fields.length) || (box.methods && box.methods.length));
+      // ER 实体行（rows，仅主框）：与 fields/methods 互斥且优先；标签置顶加分隔线后，
+      // 逐行渲染 key/name/type 三列，key 与 name 之间加一条竖分隔线。框高预算 h ≥ 67 + 20×行数。
+      const rows = !small && !dot && box.rows && box.rows.length ? box.rows : null;
+      const sectioned = !small && !dot && (rows || (box.fields && box.fields.length) || (box.methods && box.methods.length));
       if (!dot) {
         const labelY = sectioned ? box.y + 24 : icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
         text(layer, cx, labelY, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
         if (hasValue && !sectioned) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
       }
-      if (sectioned) {
+      if (rows) {
+        // ER 三列：水平分隔线 y+38；行基线 y+58+i*20；key 列 x+10、name 列 x+56 左对齐，type 列右对齐
+        element('path', { class: 'slide-box-divider', d: `M ${box.x + 10} ${box.y + 38} L ${box.x + box.w - 10} ${box.y + 38}` }, layer);
+        // key 与 name 之间的竖分隔线：x+48，从 y+38 到 y+h-8
+        element('path', { class: 'slide-box-divider', d: `M ${box.x + 48} ${box.y + 38} L ${box.x + 48} ${box.y + box.h - 8}` }, layer);
+        rows.forEach((row, index) => {
+          const y = box.y + 58 + index * 20;
+          if (row.key) text(layer, box.x + 10, y, row.key, { class: 'slide-box-member slide-box-key' });
+          text(layer, box.x + 56, y, row.name, { class: 'slide-box-member' });
+          if (row.type) text(layer, box.x + box.w - 12, y, row.type, { class: 'slide-box-member slide-box-type' });
+        });
+      } else if (sectioned) {
         const divider = y => element('path', { class: 'slide-box-divider', d: `M ${box.x + 10} ${y} L ${box.x + box.w - 10} ${y}` }, layer);
         const members = (list, top) => list.forEach((member, index) => text(layer, box.x + 12, top + index * 20, member, { class: 'slide-box-member' }));
         const fields = box.fields || [];
