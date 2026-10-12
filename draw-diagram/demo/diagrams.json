@@ -140,6 +140,44 @@
           { "from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305] }
         ]
       }
+    },
+    {
+      "id": "order-sequence",
+      "title": "下单时序：请求与应答",
+      "note": "时序风格：三位参与者各带一条生命线，消息按时间编号；请求用实线实心箭头（flow）、应答用虚线开放箭头（reply），含一次自调用。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          { "id": "client", "label": "客户端" },
+          { "id": "order", "label": "订单服务" },
+          { "id": "warehouse", "label": "仓储服务" }
+        ],
+        "edges": [
+          { "from": "client", "to": "order", "label": "1 提交订单" },
+          { "from": "order", "to": "order", "label": "2 校验订单" },
+          { "from": "order", "to": "warehouse", "label": "3 预留库存" },
+          { "from": "warehouse", "to": "order", "label": "4 库存结果", "kind": "reply" },
+          { "from": "order", "to": "client", "label": "5 下单结果", "kind": "reply" }
+        ]
+      },
+      "diagram": {
+        "boxes": [
+          { "id": "client", "x": 75, "y": 24, "w": 150, "h": 64, "fill": "sky", "label": "客户端" },
+          { "id": "order", "x": 285, "y": 24, "w": 150, "h": 64, "fill": "mint", "label": "订单服务" },
+          { "id": "warehouse", "x": 495, "y": 24, "w": 150, "h": 64, "fill": "pink", "label": "仓储服务" }
+        ],
+        "lifelines": [
+          { "of": "client", "to": 420, "end": true },
+          { "of": "order", "to": 420, "end": true },
+          { "of": "warehouse", "to": 420, "end": true }
+        ],
+        "arrows": [
+          { "from": "client@life:150", "to": "order@life:150", "label": "1 提交订单", "at": [255, 133] },
+          { "from": "order@life:190", "to": "order@life:240", "label": "2 校验订单", "at": [405, 220], "bend": 90 },
+          { "from": "order@life:290", "to": "warehouse@life:290", "label": "3 预留库存", "at": [465, 273] },
+          { "from": "warehouse@life:340", "to": "order@life:340", "kind": "reply", "label": "4 库存结果", "at": [465, 323] },
+          { "from": "order@life:390", "to": "client@life:390", "kind": "reply", "label": "5 下单结果", "at": [255, 373] }
+        ]
+      }
     }
   ]
 }

@@ -22,16 +22,23 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
 .slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }
 .slide-arrow--sm { stroke-width: 1.6; }
 .slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }
+/* 返回/响应（reply）用虚线：UML 交互图里同步调用是实线、返回是虚线；箭头形状（实心/开放）由 diagram.js 的 heads 决定。 */
+.slide-arrow--reply { stroke-dasharray: 9 7; }
 .slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }
 .slide-arrow-label--blocked { fill: #c41d4f; }
 .slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }
 .slide-note--warn { fill: #c41d4f; font-weight: 700; }
+/* 生命线（时序风格）与结束短杠：压暗虚线，只做时间轴示意，不表示关系强度。 */
+.slide-lifeline { fill: none; stroke: #111; stroke-width: 1.5; stroke-dasharray: 7 7; opacity: .35; }
+.slide-lifeline-end { fill: none; stroke: #111; stroke-width: 1.5; opacity: .35; }
 </style>
 <script>window.__diagramErrors = []; addEventListener('error', e => __diagramErrors.push(e.message));</script>
 <script>(() => {
   'use strict';
   // Fixed-geometry diagram renderer; routing uses explicit anchors and control points.
   // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
+  // 时序风格：diagram.lifelines 声明节点生命线（虚线，纯装饰），连线用「id@life:y」锚在生命线高度上；
+  // 两条生命线之间的消息默认走直线，同一条生命线上的两端自动画成自调用环。
   // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
   // Bright fills keep black labels legible; assign colors consistently by concept.
@@ -51,6 +58,16 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     ok: { fill: '#18a058', glyph: '✓', ink: '#fff', dy: -0.5 },
     warn: { fill: '#f5a524', glyph: '?', ink: '#1a1a1a', dy: -0.3 }
   };
+  // 关系线型按语义选：flow 同步/调用（实线实心箭头）、async 异步（实线开放箭头）、
+  // reply 返回/响应（虚线开放箭头，虚线样式在 diagram.css）、blocked 阻断失败（红色虚线）。
+  // 同步用实心三角、异步与返回用开放箭头，是 UML 交互图的通行画法。
+  const heads = {
+    flow: { color: '#111', open: false },
+    async: { color: '#111', open: true },
+    reply: { color: '#111', open: true },
+    blocked: { color: '#e0245e', open: false }
+  };
+  const arrowKinds = new Set(Object.keys(heads));
   const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
 
   // 主节点外形：rect（默认，圆角由 r 控制）、pill（胶囊，两端半圆）、diamond（菱形，判断）、ellipse（椭圆，起止）。
@@ -134,11 +151,19 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     });
     return node;
   }
-  function anchor(shapes, reference) {
+  function anchor(shapes, reference, lifelines = new Map()) {
     const [id, rest = 'right'] = reference.split('@');
     const [side, ratioText] = rest.split(':');
     const shape = shapes.get(id);
     if (!shape) throw new Error(`连线引用了不存在的框：${id}`);
+    // @life:<y>：落在该节点生命线的指定高度上。方向不固定，由 route 依另一端（或自调用）补齐。
+    if (side === 'life') {
+      const line = lifelines.get(id);
+      if (!line) throw new Error(`节点没有声明生命线，无法用 @life 锚点：${reference}`);
+      const y = Number(ratioText);
+      if (!Number.isFinite(y)) throw new Error(`@life 锚点要写成 id@life:y：${reference}`);
+      return { point: { x: line.x, y }, direction: null, life: true };
+    }
     const ratio = ratioText === undefined ? 0.5 : Number(ratioText);
     const direction = sides[side];
     const target = side === 'top' || side === 'bottom'
@@ -178,17 +203,29 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     }
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
-  // 箭头尖端与框边留 3px，出发端贴边
-  function route(shapes, arrow, ring) {
-    if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 3, arrow.counter);
-    const start = anchor(shapes, arrow.from);
-    const end = anchor(shapes, arrow.to);
-    const gap = arrow.size === 'sm' ? 1.5 : 3;
+  // 箭头尖端贴合目标边界：线尾回退到三角内部（回退处三角半高 ≈ 0.458×回退量，须大于线半宽），出发端贴边
+  function route(shapes, arrow, ring, lifelines = new Map()) {
+    if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 6, arrow.counter);
+    const start = anchor(shapes, arrow.from, lifelines);
+    const end = anchor(shapes, arrow.to, lifelines);
+    // 生命线锚点自身没有固定朝向：取「指向另一端」的水平方向；自调用（同一条生命线）向右出、向左回。
+    const self = Boolean(start.life && end.life && start.point.x === end.point.x);
+    if (!start.direction) start.direction = self ? { x: 1, y: 0 } : { x: Math.sign(end.point.x - start.point.x) || 1, y: 0 };
+    if (!end.direction) end.direction = self ? { x: 1, y: 0 } : { x: Math.sign(start.point.x - end.point.x) || 1, y: 0 };
+    // 与箭头标记 refX=8 对应：实心尖端越过线尾 (12−8)×1.5×scale，开放尖端 5.25×scale，刚好落到边界上
+    const gap = arrow.size === 'sm' ? 3.3 : 6;
     const from = start.point;
     const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
     const inward = { x: -end.direction.x, y: -end.direction.y };
-    if (arrow.shape === 'line') return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
-    if (arrow.shape === 'elbow') {
+    // 自调用：向右绕一个圆角矩形环再回到同一条生命线
+    if (self && !arrow.via) {
+      const reachX = from.x + (arrow.bend ?? 44);
+      return roundedPath([from, { x: reachX, y: from.y }, { x: reachX, y: to.y }, to], 10);
+    }
+    // 两条生命线之间的消息默认走直线（时序风格），仍可用 elbow/arc 覆盖
+    const kind = arrow.shape || (start.life && end.life ? 'line' : 'arc');
+    if (kind === 'line') return `M ${from.x} ${from.y} L ${to.x} ${to.y}`;
+    if (kind === 'elbow') {
       const points = [from, ...(arrow.via || []).map(([x, y]) => ({ x, y }))];
       if (!arrow.via) {
         const horizontalOut = start.direction.x !== 0;
@@ -237,10 +274,12 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     const svg = element('svg', { viewBox: `0 0 ${width} ${height}`, xmlns: svgNS, class: 'slide', role: 'img' });
     if (title) element('title', {}, svg).textContent = title;
     const defs = element('defs', {}, svg);
-    for (const [kind, color] of [['flow', '#111'], ['blocked', '#e0245e']]) {
+    for (const [kind, head] of Object.entries(heads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
-        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '11', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
-        element('path', { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: color }, marker);
+        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '8', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+        element('path', head.open
+          ? { d: 'M 0.5 1 L 11.5 6 L 0.5 11', fill: 'none', stroke: head.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }
+          : { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: head.color }, marker);
       }
     }
     const shadow = element('filter', { id: `${prefix}-shadow`, x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
@@ -250,11 +289,26 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     for (const group of slide.groups || []) shapes.set(group.id, group);
     for (const box of slide.boxes || []) shapes.set(box.id, box);
 
+    // 生命线（时序风格）：从节点底边向下的虚线，纯装饰，只用于给 @life:<y> 锚点定位。
+    const lifelines = new Map();
+    for (const line of slide.lifelines || []) {
+      const shape = shapes.get(line.of);
+      if (!shape) throw new Error(`生命线引用了不存在的框：${line.of}`);
+      if (lifelines.has(line.of)) throw new Error(`同一节点只能有一条生命线：${line.of}`);
+      const x = shape.x + shape.w * (line.at === undefined ? 0.5 : Number(line.at));
+      lifelines.set(line.of, { x, y1: boundary(shape, { x, y: shape.y + shape.h }).y, y2: line.to ?? height - 24, end: line.end });
+    }
+
     for (const group of slide.groups || []) {
       const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
       element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
       if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
       if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+    }
+    const lifeLayer = element('g', { class: 'slide-lifelines' }, svg);
+    for (const line of lifelines.values()) {
+      element('path', { d: `M ${line.x} ${line.y1} L ${line.x} ${line.y2}`, class: 'slide-lifeline' }, lifeLayer);
+      if (line.end) element('path', { d: `M ${line.x - 7} ${line.y2} L ${line.x + 7} ${line.y2}`, class: 'slide-lifeline-end' }, lifeLayer);
     }
     const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
     const boxLayer = element('g', { class: 'slide-boxes' }, svg);
@@ -287,9 +341,9 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     }
     for (const arrow of slide.arrows || []) {
       const small = arrow.size === 'sm';
-      const kind = arrow.kind === 'blocked' ? 'blocked' : 'flow';
+      const kind = arrowKinds.has(arrow.kind) ? arrow.kind : 'flow';
       const path = element('path', {
-        d: route(shapes, arrow, slide.ring), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
+        d: route(shapes, arrow, slide.ring, lifelines), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
         'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`, opacity: arrow.dim ? 0.4 : null
       }, arrowLayer);
       if (arrow.label) {
@@ -317,8 +371,9 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     boxes: [...all.boxes, ...(part.boxes || [])],
     arrows: [...all.arrows, ...(part.arrows || [])],
     groups: [...all.groups, ...(part.groups || [])],
+    lifelines: [...all.lifelines, ...(part.lifelines || [])],
     notes: [...all.notes, ...(part.notes || [])]
-  }), { boxes: [], arrows: [], groups: [], notes: [] });
+  }), { boxes: [], arrows: [], groups: [], lifelines: [], notes: [] });
 
   window.Diagram = { render, fills, merge };
 })();
@@ -585,8 +640,8 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
 })();
 </script></head>
 <body><main><h1>交付与运营 · 通用图解 Demo</h1><p id="preview-summary">Rendering…</p><div id="preview"></div></main>
-<script>const documentData = {"title": "交付与运营 · 通用图解 Demo", "frames": [{"id": "release-flow", "title": "发布流水线", "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。", "content": {"nodes": [{"id": "commit", "label": "代码提交"}, {"id": "build", "label": "自动构建"}, {"id": "accept", "label": "变更验收"}, {"id": "release", "label": "灰度上线"}], "edges": [{"from": "commit", "to": "build", "label": "触发"}, {"from": "build", "to": "accept"}, {"from": "accept", "to": "release"}]}, "diagram": {"boxes": [{"id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交"}, {"id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建"}, {"id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收"}, {"id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线"}], "arrows": [{"from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206]}, {"from": "build@right", "to": "accept@left", "shape": "line"}, {"from": "accept@right", "to": "release@left", "shape": "line"}]}}, {"id": "recovery-loop", "title": "异常恢复闭环", "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。", "content": {"nodes": [{"id": "detect", "label": "监测信号", "status": "warn"}, {"id": "locate", "label": "定位原因", "status": "error"}, {"id": "repair", "label": "执行修复", "status": "ok"}, {"id": "verify", "label": "复核结果", "status": "ok"}], "edges": [{"from": "detect", "to": "locate", "label": "告警"}, {"from": "locate", "to": "repair"}, {"from": "repair", "to": "verify"}, {"from": "verify", "to": "detect", "label": "持续监测"}]}, "diagram": {"boxes": [{"id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn"}, {"id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error"}, {"id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok"}, {"id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok"}], "arrows": [{"from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100]}, {"from": "locate@bottom", "to": "repair@right", "shape": "arc"}, {"from": "repair@left", "to": "verify@bottom", "shape": "arc"}, {"from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104]}]}}, {"id": "service-boundaries", "title": "订单与仓储边界", "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。", "content": {"nodes": [{"id": "platform", "label": "交易平台"}, {"id": "orders", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}, {"id": "accepted", "label": "接收订单"}, {"id": "confirmed", "label": "确认完成"}, {"id": "reserved", "label": "预留库存"}, {"id": "shipped", "label": "安排发货"}], "edges": [{"from": "accepted", "to": "reserved", "label": "预留"}, {"from": "shipped", "to": "confirmed", "label": "确认"}]}, "diagram": {"w": 960, "h": 540, "groups": [{"id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22}, {"id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22}, {"id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22}], "boxes": [{"id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单"}, {"id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成"}, {"id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存"}, {"id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货"}], "arrows": [{"from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198]}, {"from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358]}]}}, {"id": "shape-vocabulary", "title": "审核分支：四种外形", "note": "四种外形各担一种语义：椭圆起止、矩形步骤、菱形判断、胶囊状态。菱形与胶囊需要更大的外接框，因此画布为 820×450。来源：demo/brief.md。", "content": {"nodes": [{"id": "start", "label": "开始"}, {"id": "submit", "label": "提交变更"}, {"id": "gate", "label": "审核通过？"}, {"id": "ship", "label": "上线", "status": "ok"}, {"id": "revise", "label": "修改", "status": "warn"}], "edges": [{"from": "start", "to": "submit"}, {"from": "submit", "to": "gate"}, {"from": "gate", "to": "ship", "label": "通过"}, {"from": "gate", "to": "revise", "label": "驳回"}]}, "diagram": {"w": 820, "h": 450, "boxes": [{"id": "start", "shape": "ellipse", "x": 20, "y": 190, "w": 140, "h": 70, "fill": "sky", "label": "开始"}, {"id": "submit", "x": 200, "y": 190, "w": 150, "h": 70, "fill": "mintSoft", "label": "提交变更"}, {"id": "gate", "shape": "diamond", "x": 390, "y": 160, "w": 220, "h": 130, "fill": "amber", "label": "审核通过？"}, {"id": "ship", "shape": "pill", "x": 680, "y": 193, "w": 120, "h": 64, "fill": "mint", "label": "上线", "status": "ok"}, {"id": "revise", "shape": "pill", "x": 680, "y": 305, "w": 120, "h": 64, "fill": "pink", "label": "修改", "status": "warn"}], "arrows": [{"from": "start@right", "to": "submit@left", "shape": "line"}, {"from": "submit@right", "to": "gate@left", "shape": "line"}, {"from": "gate@right", "to": "ship@left", "shape": "line", "label": "通过", "at": [643, 205]}, {"from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305]}]}}]};
-const diagramStyle = "/* Diagram styles: white canvas, bright fills, bold labels, solid directional arrows. */\n.slide { display: block; width: 100%; height: auto; background: #fff; font-family: \"PingFang SC\", -apple-system, BlinkMacSystemFont, \"Helvetica Neue\", \"Microsoft YaHei\", sans-serif; }\n.slide text { dominant-baseline: central; text-anchor: middle; }\n.slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }\n.slide-box--sm .slide-box-label { font-size: 9.5px; }\n.slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }\n.slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }\n.slide-badge { font-size: 13px; font-weight: 800; }\n.slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }\n.slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }\n.slide-arrow--sm { stroke-width: 1.6; }\n.slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }\n.slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }\n.slide-arrow-label--blocked { fill: #c41d4f; }\n.slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }\n.slide-note--warn { fill: #c41d4f; font-weight: 700; }\n";
+<script>const documentData = {"title": "交付与运营 · 通用图解 Demo", "frames": [{"id": "release-flow", "title": "发布流水线", "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。", "content": {"nodes": [{"id": "commit", "label": "代码提交"}, {"id": "build", "label": "自动构建"}, {"id": "accept", "label": "变更验收"}, {"id": "release", "label": "灰度上线"}], "edges": [{"from": "commit", "to": "build", "label": "触发"}, {"from": "build", "to": "accept"}, {"from": "accept", "to": "release"}]}, "diagram": {"boxes": [{"id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交"}, {"id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建"}, {"id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收"}, {"id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线"}], "arrows": [{"from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206]}, {"from": "build@right", "to": "accept@left", "shape": "line"}, {"from": "accept@right", "to": "release@left", "shape": "line"}]}}, {"id": "recovery-loop", "title": "异常恢复闭环", "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。", "content": {"nodes": [{"id": "detect", "label": "监测信号", "status": "warn"}, {"id": "locate", "label": "定位原因", "status": "error"}, {"id": "repair", "label": "执行修复", "status": "ok"}, {"id": "verify", "label": "复核结果", "status": "ok"}], "edges": [{"from": "detect", "to": "locate", "label": "告警"}, {"from": "locate", "to": "repair"}, {"from": "repair", "to": "verify"}, {"from": "verify", "to": "detect", "label": "持续监测"}]}, "diagram": {"boxes": [{"id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn"}, {"id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error"}, {"id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok"}, {"id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok"}], "arrows": [{"from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100]}, {"from": "locate@bottom", "to": "repair@right", "shape": "arc"}, {"from": "repair@left", "to": "verify@bottom", "shape": "arc"}, {"from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104]}]}}, {"id": "service-boundaries", "title": "订单与仓储边界", "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。", "content": {"nodes": [{"id": "platform", "label": "交易平台"}, {"id": "orders", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}, {"id": "accepted", "label": "接收订单"}, {"id": "confirmed", "label": "确认完成"}, {"id": "reserved", "label": "预留库存"}, {"id": "shipped", "label": "安排发货"}], "edges": [{"from": "accepted", "to": "reserved", "label": "预留"}, {"from": "shipped", "to": "confirmed", "label": "确认"}]}, "diagram": {"w": 960, "h": 540, "groups": [{"id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22}, {"id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22}, {"id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22}], "boxes": [{"id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单"}, {"id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成"}, {"id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存"}, {"id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货"}], "arrows": [{"from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198]}, {"from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358]}]}}, {"id": "shape-vocabulary", "title": "审核分支：四种外形", "note": "四种外形各担一种语义：椭圆起止、矩形步骤、菱形判断、胶囊状态。菱形与胶囊需要更大的外接框，因此画布为 820×450。来源：demo/brief.md。", "content": {"nodes": [{"id": "start", "label": "开始"}, {"id": "submit", "label": "提交变更"}, {"id": "gate", "label": "审核通过？"}, {"id": "ship", "label": "上线", "status": "ok"}, {"id": "revise", "label": "修改", "status": "warn"}], "edges": [{"from": "start", "to": "submit"}, {"from": "submit", "to": "gate"}, {"from": "gate", "to": "ship", "label": "通过"}, {"from": "gate", "to": "revise", "label": "驳回"}]}, "diagram": {"w": 820, "h": 450, "boxes": [{"id": "start", "shape": "ellipse", "x": 20, "y": 190, "w": 140, "h": 70, "fill": "sky", "label": "开始"}, {"id": "submit", "x": 200, "y": 190, "w": 150, "h": 70, "fill": "mintSoft", "label": "提交变更"}, {"id": "gate", "shape": "diamond", "x": 390, "y": 160, "w": 220, "h": 130, "fill": "amber", "label": "审核通过？"}, {"id": "ship", "shape": "pill", "x": 680, "y": 193, "w": 120, "h": 64, "fill": "mint", "label": "上线", "status": "ok"}, {"id": "revise", "shape": "pill", "x": 680, "y": 305, "w": 120, "h": 64, "fill": "pink", "label": "修改", "status": "warn"}], "arrows": [{"from": "start@right", "to": "submit@left", "shape": "line"}, {"from": "submit@right", "to": "gate@left", "shape": "line"}, {"from": "gate@right", "to": "ship@left", "shape": "line", "label": "通过", "at": [643, 205]}, {"from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305]}]}}, {"id": "order-sequence", "title": "下单时序：请求与应答", "note": "时序风格：三位参与者各带一条生命线，消息按时间编号；请求用实线实心箭头（flow）、应答用虚线开放箭头（reply），含一次自调用。来源：demo/brief.md。", "content": {"nodes": [{"id": "client", "label": "客户端"}, {"id": "order", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}], "edges": [{"from": "client", "to": "order", "label": "1 提交订单"}, {"from": "order", "to": "order", "label": "2 校验订单"}, {"from": "order", "to": "warehouse", "label": "3 预留库存"}, {"from": "warehouse", "to": "order", "label": "4 库存结果", "kind": "reply"}, {"from": "order", "to": "client", "label": "5 下单结果", "kind": "reply"}]}, "diagram": {"boxes": [{"id": "client", "x": 75, "y": 24, "w": 150, "h": 64, "fill": "sky", "label": "客户端"}, {"id": "order", "x": 285, "y": 24, "w": 150, "h": 64, "fill": "mint", "label": "订单服务"}, {"id": "warehouse", "x": 495, "y": 24, "w": 150, "h": 64, "fill": "pink", "label": "仓储服务"}], "lifelines": [{"of": "client", "to": 420, "end": true}, {"of": "order", "to": 420, "end": true}, {"of": "warehouse", "to": 420, "end": true}], "arrows": [{"from": "client@life:150", "to": "order@life:150", "label": "1 提交订单", "at": [255, 133]}, {"from": "order@life:190", "to": "order@life:240", "label": "2 校验订单", "at": [405, 220], "bend": 90}, {"from": "order@life:290", "to": "warehouse@life:290", "label": "3 预留库存", "at": [465, 273]}, {"from": "warehouse@life:340", "to": "order@life:340", "kind": "reply", "label": "4 库存结果", "at": [465, 323]}, {"from": "order@life:390", "to": "client@life:390", "kind": "reply", "label": "5 下单结果", "at": [255, 373]}]}}]};
+const diagramStyle = "/* Diagram styles: white canvas, bright fills, bold labels, solid directional arrows. */\n.slide { display: block; width: 100%; height: auto; background: #fff; font-family: \"PingFang SC\", -apple-system, BlinkMacSystemFont, \"Helvetica Neue\", \"Microsoft YaHei\", sans-serif; }\n.slide text { dominant-baseline: central; text-anchor: middle; }\n.slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }\n.slide-box--sm .slide-box-label { font-size: 9.5px; }\n.slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }\n.slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }\n.slide-badge { font-size: 13px; font-weight: 800; }\n.slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }\n.slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }\n.slide-arrow--sm { stroke-width: 1.6; }\n.slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }\n/* 返回/响应（reply）用虚线：UML 交互图里同步调用是实线、返回是虚线；箭头形状（实心/开放）由 diagram.js 的 heads 决定。 */\n.slide-arrow--reply { stroke-dasharray: 9 7; }\n.slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }\n.slide-arrow-label--blocked { fill: #c41d4f; }\n.slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }\n.slide-note--warn { fill: #c41d4f; font-weight: 700; }\n/* 生命线（时序风格）与结束短杠：压暗虚线，只做时间轴示意，不表示关系强度。 */\n.slide-lifeline { fill: none; stroke: #111; stroke-width: 1.5; stroke-dasharray: 7 7; opacity: .35; }\n.slide-lifeline-end { fill: none; stroke: #111; stroke-width: 1.5; opacity: .35; }\n";
 
 (async () => {
   const report = { frames: documentData.frames.length, drawn: 0, errors: 0, hints: 0, items: [], scriptErrors: [] };
