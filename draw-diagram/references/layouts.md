@@ -97,6 +97,37 @@ Rules that keep a sequence frame readable:
 - **Width:** four participants need roughly 940×400 and up; the default 720×450 canvas fits three comfortably.
 - Lifelines are decoration, never nodes: they carry no `content` entry, and the geometry checker ignores them (a message crossing a lifeline is not a defect).
 
+### Advanced sequence frames: activations, fragments, runtime-created objects
+
+For a call that shows execution periods, conditional/parallel fragments and an object created mid-interaction, keep the sequence rules above and add the sequence decorations from [frame-format.md](frame-format.md):
+
+- **Activation bars** (`diagram.activations: [{of, from, to, at?}]`) mark the window in which a participant is executing. `of` must be a node that already declares a lifeline, and `from < to` (both throw otherwise). Bars are 14 wide, centred on the lifeline, drawn under the arrows so message endpoints land on the bar's centre line. **Nesting is expressed by the coordinates alone**: an inner call's bar must end before the outer bar does, and a bar longer than a frame's worth of messages is a defect in the drawing, not the renderer. Give the controller and the service each at least one bar of a different length; a participant with no bar is simply idle during that interval.
+- **Runtime-created object.** Draw it as an ordinary box with its literal name as the label (`订单对象\norder:Order`) placed to the right, mid-frame, with a **short lifeline**: `{of: 'obj', to: y, end: true}` where `to` is just below the box. Its creation is the message that points at it, and the reply leaves its own lifeline, so the box never needs a full-height time axis. Anchor the creation message with `obj@left:0.5` (the object has no lifeline above the box) and the reply with `obj@life:<y>`.
+- **Combined fragments** (`diagram.fragments`) are the Alt/Opt/Loop/Par panels. Declare the outer fragment first, then the nested one with smaller `x/y/w/h` inside it — array order is draw order, so the later panel covers the earlier one. `guard` (e.g. `[ 订单有效 ]`) is the fragment condition at `y+52`; `op` is the nesting label (`1.1.2`, then `1.1.2.1` for the inner one) rendered *left of* the frame, so leave ~40 units of margin and **put the numbering outside the frame's left edge**, not inside.
+- **Numbering** follows the `op` prefixes: top-level message `1`, then `1.1`, `1.1.1`, `1.1.1.1`, and inside the Par fragment `1.1.2.1.1` / `1.1.2.1.2`. Every number in the label must match its `content.edges` label; the checker compares labels and will not accept a number that exists on only one side.
+- **Budget the frame around its messages.** The tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70` when the fragment carries a guard (`top + 50` when it does not) and leave ~20 units under the last message. Order the fragments' message `y` values (creation above the reply, then the Par pair) and keep the fragment bands disjoint from the participant headers.
+- **Boundaries are ordinary groups.** Participant groupings are groups with `titleAlign: 'left'` for a primary solid boundary and `dashed: true` for a secondary one; both titles are semantic nodes and both groups are only framing — positions stay absolute, so place boxes and lifelines inside the group rectangles by hand.
+
+```js
+const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
+  w: 1000, h: 640,
+  groups: [
+    { id: 'order-boundary', x: 30, y: 14, w: 566, h: 336, title: '订单服务', titleY: 22, titleAlign: 'left' },
+    { id: 'business-boundary', x: 606, y: 14, w: 378, h: 336, title: '业务服务', titleY: 22, dashed: true }
+  ],
+  activations: [ { of: 'order-svc', from: 246, to: 612 } ],
+  fragments: [
+    { kind: 'alt', x: 64, y: 458, w: 896, h: 160, guard: '[ 订单有效 ]', op: '1.1.2' },
+    { kind: 'par', x: 252, y: 488, w: 696, h: 116, op: '1.1.2.1' }
+  ],
+  arrows: [
+    { from: 'order-svc@life:554', to: 'purchase-svc@life:554', label: '1.1.2.1.1 createPO(order)', at: [391, 532] }
+  ]
+});
+```
+
+The demo frame `order-call-sequence` is the worked example: 1000×640, two boundaries, five participants plus a runtime-created `order:Order`, three activation bars, an `alt` guard with a nested `par`.
+
 ## Swimlane style: one flow across roles
 
 Use it when the same process is **executed by different roles or systems in turn** — approvals, escalations, handoffs. Start from `DIAGRAM_TEMPLATES.swimlane3` and replace its placeholders.

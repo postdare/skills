@@ -4,6 +4,10 @@
   // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
   // 时序风格：diagram.lifelines 声明节点生命线（虚线，纯装饰），连线用「id@life:y」锚在生命线高度上；
   // 两条生命线之间的消息默认走直线，同一条生命线上的两端自动画成自调用环。
+  // 进阶时序：diagram.activations 在生命线上加执行激活条，diagram.fragments 画 Alt/Opt/Loop/Par 组合片段框；
+  // 两者都是装饰（不进 content、不参与语义比对与几何检查）。层级：泳道/生命线之上是激活条，再是箭头与节点；
+  // 片段框是底衬，排在泳道/生命线之前，这样框内的生命线、激活条与消息线都不会被半透明白底洗淡。
+  // 分组边界：group.dashed 用虚线描边，group.titleAlign: 'left' 让标题左对齐（默认为居中）。
   // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
   // Bright fills keep black labels legible; assign colors consistently by concept.
@@ -45,6 +49,14 @@
     many: { d: 'M 11.2 6 L 0.8 1.8 M 11.2 6 L 0.8 6 M 11.2 6 L 0.8 10.2', fill: 'none', stroke: '#111', width: 1.7, linecap: 'round' }
   };
   const arrowKinds = new Set(Object.keys(heads));
+  // 交互片段框（UML combined fragment）：字形沿用规范符号，标签文字用英文缩写；
+  // 与生命线、泳道分隔线一样是装饰，不进 content、不参与语义比对，也不进几何判定。
+  const fragmentKinds = {
+    alt: { glyph: '◇', label: 'Alt' },
+    opt: { glyph: '◇', label: 'Opt' },
+    loop: { glyph: '↻', label: 'Loop' },
+    par: { glyph: '=', label: 'Par' }
+  };
   // 节点图标：24×24 网格的线条图标（stroke 风格，与文字同墨色），box.icon 选用；纯视觉，不进 content
   const icons = {
     database: [
@@ -348,9 +360,36 @@
 
     for (const group of slide.groups || []) {
       const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
-      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
-      if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
+      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5, 'stroke-dasharray': group.dashed ? '9 7' : null }, layer);
+      // titleAlign: 'left' 把标题挪到左内边距并左对齐（区别于默认居中）：层叠容器/片段框用左对齐更贴标签习惯
+      if (group.title) {
+        const left = group.titleAlign === 'left';
+        text(layer, left ? group.x + 16 : group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: `slide-group-title${left ? ' is-left' : ''}` });
+      }
       if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+    }
+    // 交互片段框（时序）：UML 组合片段 Alt/Opt/Loop/Par。面板与标签条是装饰，不进 content、不参与语义比对。
+    // **层级：面板 = 片段底衬，排在泳道/生命线之前**。面板只有 fill-opacity .92 的白底，若盖在生命线上就会把
+    // 它洗淡到几乎看不见（实测：片段框内的生命线/激活条被压到 ~93% 白，读起来像断线）；排在生命线之下则
+    // 只压画布底色，生命线、激活条与消息线在框内全都保持原样。片段自己的边框描边仍画在生命线之下，1.5 描边
+    // 与 1.5 虚线生命线只有 1px 内缘相切，两色同为 #111/近黑，重叠处不可辨，不构成观感问题。
+    // 面板底部边框与它下面的任何图元都不重叠，故底边始终可见。
+    const fragments = slide.fragments || [];
+    if (fragments.length) {
+      const fragmentLayer = element('g', { class: 'slide-fragments' }, svg);
+      for (const fragment of fragments) {
+        const spec = fragmentKinds[fragment.kind];
+        if (!spec) throw new Error(`片段框 kind 只能是 alt/opt/loop/par：${fragment.kind}`);
+        const { x, y } = fragment;
+        const layer = element('g', { 'data-kind': fragment.kind, opacity: fragment.dim ? 0.4 : null }, fragmentLayer);
+        element('rect', { x, y, width: fragment.w, height: fragment.h, rx: 4, class: 'slide-fragment' }, layer);
+        // 左上角标签条：宽 78、高 26，内含字形 + 英文缩写；14px bold 左对齐，两段文字起点相隔 20
+        element('rect', { x, y, width: 78, height: 26, class: 'slide-fragment-tab' }, layer);
+        text(layer, x + 12, y + 14, spec.glyph, { class: 'slide-fragment-tab-text' });
+        text(layer, x + 32, y + 14, spec.label, { class: 'slide-fragment-tab-text' });
+        if (fragment.guard) text(layer, x + 14, y + 52, fragment.guard, { class: 'slide-fragment-guard' });
+        if (fragment.op) text(layer, x - 10, y + 18, fragment.op, { class: 'slide-fragment-op' });
+      }
     }
     const lifeLayer = element('g', { class: 'slide-lifelines' }, svg);
     // 泳道泳池：单一外框 + 顶部标题带 + 道间单线分隔（参考标准泳道格式）；道是语义节点，分隔线纯装饰
@@ -370,6 +409,26 @@
     for (const line of lifelines.values()) {
       element('path', { d: `M ${line.x} ${line.y1} L ${line.x} ${line.y2}`, class: 'slide-lifeline' }, lifeLayer);
       if (line.end) element('path', { d: `M ${line.x - 7} ${line.y2} L ${line.x + 7} ${line.y2}`, class: 'slide-lifeline-end' }, lifeLayer);
+    }
+    // 激活条（时序）：生命线上一段 14 宽的窄条，表示该参与者在这段时间里正在执行。
+    // 与生命线同为装饰：不进 content、不参与语义比对；类名刻意避开 .slide-shape/.slide-box/.slide-group/.slide-arrow，
+    // 几何检查因此完全看不到它。层级在生命线之上、箭头之下——消息端点的 x 就是生命线 x，正好落在条的竖直中线上。
+    // 图层按需创建：未声明 activations/fragments 的帧拿到的 DOM 与旧版一致
+    const activations = slide.activations || [];
+    if (activations.length) {
+      const activationLayer = element('g', { class: 'slide-activations' }, svg);
+      for (const activation of activations) {
+        const shape = shapes.get(activation.of);
+        if (!shape) throw new Error(`激活条引用了不存在的框：${activation.of}`);
+        const line = lifelines.get(activation.of);
+        if (!line) throw new Error(`节点没有声明生命线，无法放激活条：${activation.of}`);
+        const from = Number(activation.from);
+        const to = Number(activation.to);
+        if (!Number.isFinite(from) || !Number.isFinite(to) || !(from < to)) throw new Error(`激活条 from 必须小于 to：${activation.of}`);
+        // at 与 lifelines 的 at 同义（节点宽度上的比例）；缺省时直接用该节点生命线的 x，条心与时间轴严格重合
+        const x = (activation.at === undefined ? line.x : shape.x + shape.w * Number(activation.at)) - 7;
+        element('rect', { x, y: from, width: 14, height: to - from, class: 'slide-activation' }, activationLayer);
+      }
     }
     const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
     const boxLayer = element('g', { class: 'slide-boxes' }, svg);
@@ -480,8 +539,10 @@
     arrows: [...all.arrows, ...(part.arrows || [])],
     groups: [...all.groups, ...(part.groups || [])],
     lifelines: [...all.lifelines, ...(part.lifelines || [])],
+    activations: [...all.activations, ...(part.activations || [])],
+    fragments: [...all.fragments, ...(part.fragments || [])],
     notes: [...all.notes, ...(part.notes || [])]
-  }), { boxes: [], arrows: [], groups: [], lifelines: [], notes: [] });
+  }), { boxes: [], arrows: [], groups: [], lifelines: [], activations: [], fragments: [], notes: [] });
 
   window.Diagram = { render, fills, merge };
 })();

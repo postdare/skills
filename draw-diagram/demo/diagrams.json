@@ -659,6 +659,289 @@
       }
     },
     {
+      "id": "order-call-sequence",
+      "title": "下单时序（进阶）：片段与激活条",
+      "note": "时序进阶：两条参与者分组边界（实线左对齐标题 / 虚线），执行期画激活条，运行时创建的对象只画下半段生命线；外层 Alt（守卫条件、op 在框外左侧）内嵌 Par，编号沿 op 前缀嵌套。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "client",
+            "label": "客户端\n«BFF»"
+          },
+          {
+            "id": "controller",
+            "label": "订单控制器"
+          },
+          {
+            "id": "order-svc",
+            "label": "订单服务"
+          },
+          {
+            "id": "purchase-svc",
+            "label": "采购服务"
+          },
+          {
+            "id": "invoice-svc",
+            "label": "发票服务"
+          },
+          {
+            "id": "obj",
+            "label": "订单对象\norder:Order"
+          },
+          {
+            "id": "order-boundary",
+            "label": "订单服务"
+          },
+          {
+            "id": "business-boundary",
+            "label": "业务服务"
+          }
+        ],
+        "edges": [
+          {
+            "from": "client",
+            "to": "controller",
+            "label": "1 post(payload)"
+          },
+          {
+            "from": "controller",
+            "to": "order-svc",
+            "label": "1.1 create(payload)"
+          },
+          {
+            "from": "order-svc",
+            "to": "obj",
+            "label": "1.1.1 «payload»",
+            "kind": "reply"
+          },
+          {
+            "from": "obj",
+            "to": "order-svc",
+            "label": "1.1.1.1 order",
+            "kind": "reply"
+          },
+          {
+            "from": "order-svc",
+            "to": "purchase-svc",
+            "label": "1.1.2.1.1 createPO(order)"
+          },
+          {
+            "from": "order-svc",
+            "to": "invoice-svc",
+            "label": "1.1.2.1.2 createInvoice(order)"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 1000,
+        "h": 640,
+        "groups": [
+          {
+            "id": "order-boundary",
+            "x": 30,
+            "y": 14,
+            "w": 566,
+            "h": 336,
+            "title": "订单服务",
+            "titleY": 22,
+            "titleAlign": "left"
+          },
+          {
+            "id": "business-boundary",
+            "x": 606,
+            "y": 14,
+            "w": 378,
+            "h": 336,
+            "title": "业务服务",
+            "titleY": 22,
+            "dashed": true
+          }
+        ],
+        "boxes": [
+          {
+            "id": "client",
+            "x": 46,
+            "y": 52,
+            "w": 140,
+            "h": 64,
+            "fill": "sky",
+            "label": "客户端\n«BFF»"
+          },
+          {
+            "id": "controller",
+            "x": 216,
+            "y": 52,
+            "w": 140,
+            "h": 64,
+            "fill": "violet",
+            "label": "订单控制器"
+          },
+          {
+            "id": "order-svc",
+            "x": 386,
+            "y": 52,
+            "w": 140,
+            "h": 64,
+            "fill": "mint",
+            "label": "订单服务"
+          },
+          {
+            "id": "purchase-svc",
+            "x": 620,
+            "y": 52,
+            "w": 140,
+            "h": 64,
+            "fill": "pink",
+            "label": "采购服务"
+          },
+          {
+            "id": "invoice-svc",
+            "x": 800,
+            "y": 52,
+            "w": 140,
+            "h": 64,
+            "fill": "pinkSoft",
+            "label": "发票服务"
+          },
+          {
+            "id": "obj",
+            "x": 650,
+            "y": 358,
+            "w": 160,
+            "h": 60,
+            "fill": "amberSoft",
+            "label": "订单对象\norder:Order"
+          }
+        ],
+        "lifelines": [
+          {
+            "of": "client",
+            "to": 626,
+            "end": true
+          },
+          {
+            "of": "controller",
+            "to": 626,
+            "end": true
+          },
+          {
+            "of": "order-svc",
+            "to": 626,
+            "end": true
+          },
+          {
+            "of": "purchase-svc",
+            "to": 626,
+            "end": true
+          },
+          {
+            "of": "invoice-svc",
+            "to": 626,
+            "end": true
+          },
+          {
+            "of": "obj",
+            "to": 470,
+            "end": true
+          }
+        ],
+        "activations": [
+          {
+            "of": "controller",
+            "from": 176,
+            "to": 286
+          },
+          {
+            "of": "order-svc",
+            "from": 246,
+            "to": 612
+          },
+          {
+            "of": "obj",
+            "from": 424,
+            "to": 466
+          }
+        ],
+        "fragments": [
+          {
+            "kind": "alt",
+            "x": 64,
+            "y": 458,
+            "w": 896,
+            "h": 160,
+            "guard": "[ 订单有效 ]",
+            "op": "1.1.2"
+          },
+          {
+            "kind": "par",
+            "x": 252,
+            "y": 488,
+            "w": 696,
+            "h": 116,
+            "op": "1.1.2.1"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "client@life:176",
+            "to": "controller@life:176",
+            "label": "1 post(payload)",
+            "at": [
+              201,
+              156
+            ]
+          },
+          {
+            "from": "controller@life:246",
+            "to": "order-svc@life:246",
+            "label": "1.1 create(payload)",
+            "at": [
+              371,
+              226
+            ]
+          },
+          {
+            "from": "order-svc@life:378",
+            "to": "obj@left:0.5",
+            "kind": "reply",
+            "label": "1.1.1 «payload»",
+            "at": [
+              584,
+              360
+            ]
+          },
+          {
+            "from": "obj@life:442",
+            "to": "order-svc@life:442",
+            "kind": "reply",
+            "label": "1.1.1.1 order",
+            "at": [
+              581,
+              422
+            ]
+          },
+          {
+            "from": "order-svc@life:554",
+            "to": "purchase-svc@life:554",
+            "label": "1.1.2.1.1 createPO(order)",
+            "at": [
+              391,
+              532
+            ]
+          },
+          {
+            "from": "order-svc@life:594",
+            "to": "invoice-svc@life:594",
+            "label": "1.1.2.1.2 createInvoice(order)",
+            "at": [
+              496,
+              572
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "ops-architecture",
       "title": "巡检架构：节点图标",
       "note": "六种角色各带图标：人、调度、队列、服务、数据库、外部系统；消费关系用异步线型（async）。来源：demo/brief.md。",
@@ -2699,6 +2982,194 @@
             "at": [
               770,
               38
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "flowchart-branch",
+      "title": "纵向流程图：决策三分支",
+      "note": "标准流程图结构：竖直链 + 判断菱形 + 三条分支共享横轨再分列下落；分支条件标在下落段旁。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "begin",
+            "label": "开始"
+          },
+          {
+            "id": "prepare",
+            "label": "采购准备"
+          },
+          {
+            "id": "choose",
+            "label": "选择品类？"
+          },
+          {
+            "id": "laptop",
+            "label": "笔记本"
+          },
+          {
+            "id": "phone",
+            "label": "手机"
+          },
+          {
+            "id": "car",
+            "label": "汽车"
+          }
+        ],
+        "edges": [
+          {
+            "from": "begin",
+            "to": "prepare",
+            "label": "立即准备"
+          },
+          {
+            "from": "prepare",
+            "to": "choose"
+          },
+          {
+            "from": "choose",
+            "to": "laptop",
+            "label": "分支一"
+          },
+          {
+            "from": "choose",
+            "to": "phone",
+            "label": "分支二"
+          },
+          {
+            "from": "choose",
+            "to": "car",
+            "label": "分支三"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 720,
+        "h": 640,
+        "boxes": [
+          {
+            "id": "begin",
+            "x": 260,
+            "y": 20,
+            "w": 200,
+            "h": 62,
+            "fill": "sky",
+            "label": "开始"
+          },
+          {
+            "id": "prepare",
+            "x": 240,
+            "y": 190,
+            "w": 240,
+            "h": 64,
+            "r": 14,
+            "fill": "mintSoft",
+            "label": "采购准备"
+          },
+          {
+            "id": "choose",
+            "x": 240,
+            "y": 310,
+            "w": 240,
+            "h": 150,
+            "fill": "amber",
+            "shape": "diamond",
+            "label": "选择品类？"
+          },
+          {
+            "id": "laptop",
+            "x": 20,
+            "y": 560,
+            "w": 190,
+            "h": 62,
+            "fill": "mint",
+            "label": "笔记本"
+          },
+          {
+            "id": "phone",
+            "x": 265,
+            "y": 560,
+            "w": 190,
+            "h": 62,
+            "fill": "violet",
+            "label": "手机"
+          },
+          {
+            "id": "car",
+            "x": 500,
+            "y": 560,
+            "w": 190,
+            "h": 62,
+            "fill": "pink",
+            "label": "汽车"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "begin@bottom",
+            "to": "prepare@top",
+            "shape": "line",
+            "label": "立即准备",
+            "at": [
+              398,
+              142
+            ]
+          },
+          {
+            "from": "prepare@bottom",
+            "to": "choose@top",
+            "shape": "line"
+          },
+          {
+            "from": "choose@bottom",
+            "to": "laptop@top",
+            "shape": "elbow",
+            "via": [
+              [
+                360,
+                500
+              ],
+              [
+                115,
+                500
+              ]
+            ],
+            "label": "分支一",
+            "at": [
+              147,
+              520
+            ]
+          },
+          {
+            "from": "choose@bottom",
+            "to": "phone@top",
+            "shape": "line",
+            "label": "分支二",
+            "at": [
+              392,
+              520
+            ]
+          },
+          {
+            "from": "choose@bottom",
+            "to": "car@top",
+            "shape": "elbow",
+            "via": [
+              [
+                360,
+                500
+              ],
+              [
+                605,
+                500
+              ]
+            ],
+            "label": "分支三",
+            "at": [
+              637,
+              520
             ]
           }
         ]

@@ -55,6 +55,8 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `groups?` | array of groups | Framing containers that can also be semantic nodes |
 | `arrows` | array of arrows | Directed relationships |
 | `lifelines?` | array of `{of,to,at?,end?}` | Sequence-style dashed vertical guides under a node (decoration only, never a node) |
+| `activations?` | array of `{of,from,to,at?}` | Sequence-style execution bars drawn on an existing lifeline (decoration only, never a node) |
+| `fragments?` | array of `{x,y,w,h,kind,guard?,op?,dim?}` | UML combined fragment panels such as Alt/Par (decoration only, never a node) |
 | `swimlane?` | `{x,y,w,h,header?,lanes:[{id,title}…]}` | Swimlane pool: one outer frame, header band with lane titles, single separators between lanes. Each lane is a semantic node; frame and separators are decoration |
 | `ring?` | `{cx,cy,rx,ry}` | Shared elliptical route for `orbit` arrows; positive radii |
 | `notes?` | array of `{x,y,text,tone?,anchor?}` | Non-authoritative annotations; `tone: "warn"` adds emphasis |
@@ -108,9 +110,9 @@ Equal bounding boxes therefore are not interchangeable: a diamond needs roughly 
 
 ### Groups
 
-`{id,x,y,w,h,title?,titleY?,card?,status?,dim?,r?}`
+`{id,x,y,w,h,title?,titleY?,titleAlign?,dashed?,card?,status?,dim?,r?}`
 
-`titleY` is relative to group top, default 26. `card` is `{x,y,w,h}` in absolute canvas coordinates and renders a shadowed white inset. Groups draw in array order, so put an outer group before its nested groups. A group with a meaningful title is a main semantic node and must appear in content. `status: "error"` colors its outline; groups do not draw box status badges. Prefer boxes when status needs a badge or muted treatment. Cards and notes are decorations, not extra semantic nodes.
+`titleY` is relative to group top, default 26. `titleAlign: "left"` puts the title at `x+16` with `text-anchor: start` (default `center`); it changes only the title's position, never its text, so semantic matching is unaffected. `dashed: true` renders the outline as `stroke-dasharray: 9 7` — a non-semantic cue for a secondary or tentative boundary; the outline width, corner radius and `status` color are unchanged. `card` is `{x,y,w,h}` in absolute canvas coordinates and renders a shadowed white inset. Groups draw in array order, so put an outer group before its nested groups. A group with a meaningful title is a main semantic node and must appear in content. `status: "error"` colors its outline; groups do not draw box status badges. Prefer boxes when status needs a badge or muted treatment. Cards and notes are decorations, not extra semantic nodes.
 
 ### Arrows and anchors
 
@@ -153,6 +155,25 @@ Messages between lifelines anchor with `id@life:<y>`:
 Keep message `y` values in time order and about 46+ apart so labels fit between neighbours. Do not drop a participant just to shorten a message that spans non-adjacent lifelines.
 
 Illustrations explain internal mechanics without adding authoritative relationships: mark their boxes and arrows `size: "sm"`. Main nodes, including disconnected ones, remain in content. Keep helpers and decorations from presenting new business facts not present in the source.
+
+### Activations and combined fragments
+
+`activations` draws execution bars, the UML activation on a lifeline, and `fragments` draws combined-fragment panels. Both are sequence-style decoration: like lifelines they never enter `content`, never affect semantic matching, and carry classes (`slide-activation`, `slide-fragment`) deliberately outside `.slide-shape` / `.slide-box` / `.slide-group` / `.slide-arrow`, so the geometry checker does not see them at all — a message crossing a bar or a panel is normal and intended.
+
+`activations` entry `{of, from, to, at?}`:
+
+- `of` is a node id that **already declares a lifeline**; otherwise rendering throws. `from`/`to` are y coordinates (`from < to`, checked with the same explicit throw style as the `@life` anchor errors) and `at` is the ratio along that node's width, identical in meaning to `lifelines.at` (default 0.5).
+- Rendering: a `rect` 14 wide centred on the lifeline x (`x = lifeline x - 7`), `y = from`, `height = to - from`, fill `#dde3e8`, stroke `#111` width 1.2.
+- Draw order: after the lifelines, before the arrows — messages lie on top of the bar and their endpoints land on the bar's vertical centre, exactly like a UML interaction diagram.
+- Bars nest implicitly: to show a nested call, end the inner bar before the outer one ends (put its `to` above the outer `to`); nothing but the coordinates expresses nesting.
+
+`fragments` entry `{x,y,w,h,kind,guard?,op?,dim?}`:
+
+- `kind` is one of `alt`, `opt`, `loop`, `par` — any other value throws. Glyph and label follow the UML notation: `alt`/`opt` render `◇`, `loop` renders `↻`, `par` renders `=`, with the labels `Alt`/`Opt`/`Loop`/`Par`.
+- The panel is a `rect` with `rx: 4`, fill `#fff`, `fill-opacity: .92`, stroke `#111` width 1.5. The top-left tab is 78 wide and 26 tall (fill `#eceff2`) holding the glyph and label as 14px bold left-aligned text.
+- `guard` (non-empty) renders at `x+14`, `y+52` as left-aligned 14px text — the fragment's condition, written in brackets by convention. `op` (non-empty) renders *outside* the panel at `x-10`, `y+18` with `anchor: end`, so reserve at least ~40 units of margin left of the frame; nesting depth is expressed as an operating-expression prefix (`1.1.2` outside, `1.1.2.1` for its inner fragment).
+- Panels draw in array order, so a later panel covers an earlier one — declare an outer fragment before the one nested inside it, and shrink the inner `x/y/w/h` to sit within the outer frame.
+- Budget the frame so it **contains the messages it governs**: the tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70` when the fragment carries a guard (`top + 50` when it does not), and leave ~20 units of clearance above the bottom edge. Panels are drawn as a white underlay beneath the lifelines and activation bars, so lifelines and bars stay visible inside the fragment.
 
 ## Rendering and checking
 

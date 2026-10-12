@@ -15,6 +15,8 @@
 .slide-icon { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .slide-badge { font-size: 13px; font-weight: 800; }
 .slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }
+/* 左对齐标题（group.titleAlign: 'left'）：用「元素 + 类」同优先级选择器压过 `.slide text` 的 text-anchor: middle */
+.slide text.slide-group-title.is-left { text-anchor: start; }
 .slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }
 .slide-arrow--sm { stroke-width: 1.6; }
 .slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }
@@ -30,3 +32,15 @@
 /* 生命线（时序风格）与结束短杠：压暗虚线，只做时间轴示意，不表示关系强度。 */
 .slide-lifeline { fill: none; stroke: #111; stroke-width: 1.5; stroke-dasharray: 7 7; opacity: .35; }
 .slide-lifeline-end { fill: none; stroke: #111; stroke-width: 1.5; opacity: .35; }
+/* 激活条：生命线上的执行窄条，14 宽、以时间轴为中心；压暗填充让它读作「正在执行」而不是新节点。
+   类名避开 .slide-shape/.slide-box/.slide-group/.slide-arrow，几何检查完全不看它。 */
+.slide-activation { fill: #dde3e8; stroke: #111; stroke-width: 1.2; }
+/* 交互片段框（Alt/Opt/Loop/Par）：白色半透明面板 + 左上角标签条 + 可选守卫/操作符文字。
+   面板是片段底衬，排在生命线之前（见 diagram.js），消息线、生命线与激活条因此都画在它之上、
+   一个像素都不会被它的白底洗淡；面板自身 92% 不透明度的描边仍足以让四条边框（含底边）清晰可辨。 */
+.slide-fragment { fill: #fff; opacity: .92; stroke: #111; stroke-width: 1.5; }
+.slide-fragment-tab { fill: #eceff2; stroke: #111; stroke-width: 1.5; }
+/* 左对齐/右对齐文本：`.slide text` 的 text-anchor: middle 同优先级，必须用「元素 + 类」才覆盖得住 */
+.slide text.slide-fragment-tab-text { font-size: 14px; font-weight: 700; fill: #111; text-anchor: start; }
+.slide text.slide-fragment-guard { font-size: 14px; fill: #111; text-anchor: start; }
+.slide text.slide-fragment-op { font-size: 14px; fill: #111; text-anchor: end; }

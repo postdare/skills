@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 15,
-      "drawn": 15,
+      "frames": 17,
+      "drawn": 17,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -35,6 +35,12 @@
         },
         {
           "key": "order-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-call-sequence",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -95,6 +101,12 @@
         },
         {
           "key": "ecommerce-er",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "flowchart-branch",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -104,8 +116,8 @@
     },
     {
       "width": 390,
-      "frames": 15,
-      "drawn": 15,
+      "frames": 17,
+      "drawn": 17,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -135,6 +147,12 @@
         },
         {
           "key": "order-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-call-sequence",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -195,6 +213,12 @@
         },
         {
           "key": "ecommerce-er",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "flowchart-branch",
           "drawn": true,
           "errors": [],
           "hints": []
