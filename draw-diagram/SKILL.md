@@ -52,12 +52,12 @@ description: 图解：绘制流程、循环、分支、分组和状态关系图�
 
 ```bash
 python3 "$SKILL/scripts/build.py" <document.json> --out "$OUT"
-"$SKILL/scripts/shoot.sh" <preview-url> "$OUT"
+node "$SKILL/scripts/shoot.mjs" <preview-url> "$OUT"
 python3 "$SKILL/scripts/sheet.py" "$OUT"
 python3 "$SKILL/scripts/sheet.py" "$OUT" 390
 ```
 
-构建生成 `$OUT/preview.html`。使用已有可访问服务，或用 Python HTTP 服务公开输出目录，自选可用端口，再传完整预览 URL。仓库适配任务可直接传其预览 URL。截图工具使用 `ego-browser`（先读取该技能并确认依赖可用）；构建用 Python 3，审图表还需 Pillow，JS 语法检查用 Node。依赖不可用时报告具体缺项，不能把未截图称为已审图。
+构建生成 `$OUT/preview.html`。使用已有可访问服务，或用 Python HTTP 服务公开输出目录，自选可用端口，再传完整预览 URL。仓库适配任务可直接传其预览 URL。截图工具驱动本机无头 Chrome/Edge/Chromium（Node ≥ 22，无需额外安装；路径非标准时设 `BROWSER` 环境变量）；构建用 Python 3，审图表还需 Pillow。依赖不可用时报告具体缺项，不能把未截图称为已审图。
 
 截图工具生成每帧 `<id>.svg`（自包含样式）、`<id>-1200.png`、`<id>-390.png` 及 `report.json`；拼图生成 `sheet.png` 与 `sheet-390.png`。两种宽度都会生成证据，验收重点按预定展示场景选择。
 
