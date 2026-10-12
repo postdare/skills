@@ -353,6 +353,20 @@
       if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
     }
     const lifeLayer = element('g', { class: 'slide-lifelines' }, svg);
+    // 泳道泳池：单一外框 + 顶部标题带 + 道间单线分隔（参考标准泳道格式）；道是语义节点，分隔线纯装饰
+    const pool = slide.swimlane;
+    if (pool) {
+      const g = element('g', { class: 'slide-swimlane' }, svg);
+      const count = pool.lanes.length;
+      const laneW = pool.w / count;
+      const header = pool.header ?? 48;
+      element('rect', { x: pool.x, y: pool.y, width: pool.w, height: pool.h, rx: 8, fill: '#fff', stroke: '#1b1b1b', 'stroke-width': 1.5 }, g);
+      element('path', { d: `M ${pool.x} ${pool.y + header} L ${pool.x + pool.w} ${pool.y + header}`, class: 'slide-swimlane-sep' }, g);
+      pool.lanes.forEach((lane, index) => {
+        text(g, pool.x + laneW * (index + 0.5), pool.y + header / 2 + 2, lane.title, { class: 'slide-swimlane-title' });
+        if (index) element('path', { d: `M ${pool.x + laneW * index} ${pool.y + header} L ${pool.x + laneW * index} ${pool.y + pool.h}`, class: 'slide-swimlane-sep' }, g);
+      });
+    }
     for (const line of lifelines.values()) {
       element('path', { d: `M ${line.x} ${line.y1} L ${line.x} ${line.y2}`, class: 'slide-lifeline' }, lifeLayer);
       if (line.end) element('path', { d: `M ${line.x - 7} ${line.y2} L ${line.x + 7} ${line.y2}`, class: 'slide-lifeline-end' }, lifeLayer);

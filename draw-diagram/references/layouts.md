@@ -101,7 +101,7 @@ Rules that keep a sequence frame readable:
 
 Use it when the same process is **executed by different roles or systems in turn** — approvals, escalations, handoffs. Start from `DIAGRAM_TEMPLATES.swimlane3` and replace its placeholders.
 
-- **A lane is a full-height vertical group.** Tile the canvas side by side with vertical groups, one per role (three lanes of 260 width fill an 820×450 canvas). The group `title` is the role name, stays at the **top** of the lane, and is a semantic node in `content.nodes`.
+- **One pool, single separators.** Declare `diagram.swimlane: {x, y, w, h, lanes: [{id, title}…]}`: the renderer draws one outer frame, a top header band with the lane titles, and single vertical separators between lanes. Never tile per-role groups — adjacent group borders double up and their rounded corners break the grid look. Each lane is a semantic node in `content.nodes` (label = lane title); the pool frame and separators are decoration.
 - **Time runs down the lanes.** Nodes are normal boxes inside their owner's lane, ordered top to bottom; a decision keeps the usual `diamond` sizing rules (see [frame-format.md](frame-format.md)).
 - **Crossing lane borders is the point.** In-lane segments run vertical, cross-lane segments run horizontal; use `line` for straight runs and `elbow` (with `via`) so every segment stays axis-aligned. A line crossing a lane boundary is expected, not a defect — like messages crossing lifelines.
 - Park branch labels just beside their own segment, inside the lane where the segment runs.

@@ -177,16 +177,16 @@ window.DIAGRAM_TEMPLATES = {
       { from: 'p2@life:290', to: 'p2@life:340', bend: 70, label: '自处理', at: [305, 315] }
     ]
   },
-  // 泳道 · 三条竖道：全高 group 并排铺满 820×450，流程自上而下，跨道横向走线、道内纵向走线
+  // 泳道 · 三条竖道：泳池原语（单外框 + 标题带 + 单线分隔）铺满 820×450，流程自上而下，跨道横向走线、道内纵向走线
   swimlane3: {
     w: 820, h: 450,
-    groups: [
-      { id: 'lane1', x: 14, y: 14, w: 260, h: 422, title: '角色 A', titleY: 22 },
-      { id: 'lane2', x: 280, y: 14, w: 260, h: 422, title: '角色 B', titleY: 22 },
-      { id: 'lane3', x: 546, y: 14, w: 260, h: 422, title: '角色 C', titleY: 22 }
-    ],
+    swimlane: { x: 14, y: 14, w: 792, h: 422, lanes: [
+      { id: 'lane1', title: '角色 A' },
+      { id: 'lane2', title: '角色 B' },
+      { id: 'lane3', title: '角色 C' }
+    ] },
     boxes: [
-      { id: 'a', x: 69, y: 60, w: 150, h: 62, fill: 'mint', label: '第一步' },
+      { id: 'a', x: 69, y: 84, w: 150, h: 62, fill: 'mint', label: '第一步' },
       { id: 'b', x: 335, y: 190, w: 150, h: 62, fill: 'violet', label: '第二步' },
       { id: 'c', x: 601, y: 320, w: 150, h: 62, fill: 'pink', label: '第三步' }
     ],

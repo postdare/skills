@@ -1183,19 +1183,19 @@
     {
       "id": "approval-swimlane",
       "title": "审批泳道",
-      "note": "泳道：三条竖向泳道（提交人/审核人/财务，标题在道顶），流程自上而下；跨道连线横向、道内连线纵向，走线横平竖直。来源：demo/brief.md。",
+      "note": "泳道泳池：单一外框 + 顶部标题带 + 道间分隔线；道是语义节点，流程自上而下、跨道横向。来源：demo/brief.md。",
       "content": {
         "nodes": [
           {
-            "id": "lane-submitter",
+            "id": "submitter",
             "label": "提交人"
           },
           {
-            "id": "lane-reviewer",
+            "id": "reviewer",
             "label": "审核人"
           },
           {
-            "id": "lane-finance",
+            "id": "finance",
             "label": "财务"
           },
           {
@@ -1235,40 +1235,31 @@
       "diagram": {
         "w": 820,
         "h": 450,
-        "groups": [
-          {
-            "id": "lane-submitter",
-            "x": 14,
-            "y": 14,
-            "w": 260,
-            "h": 422,
-            "title": "提交人",
-            "titleY": 22
-          },
-          {
-            "id": "lane-reviewer",
-            "x": 280,
-            "y": 14,
-            "w": 260,
-            "h": 422,
-            "title": "审核人",
-            "titleY": 22
-          },
-          {
-            "id": "lane-finance",
-            "x": 546,
-            "y": 14,
-            "w": 260,
-            "h": 422,
-            "title": "财务",
-            "titleY": 22
-          }
-        ],
+        "swimlane": {
+          "x": 14,
+          "y": 14,
+          "w": 792,
+          "h": 422,
+          "lanes": [
+            {
+              "id": "submitter",
+              "title": "提交人"
+            },
+            {
+              "id": "reviewer",
+              "title": "审核人"
+            },
+            {
+              "id": "finance",
+              "title": "财务"
+            }
+          ]
+        },
         "boxes": [
           {
             "id": "submit",
-            "x": 69,
-            "y": 60,
+            "x": 71,
+            "y": 79,
             "w": 150,
             "h": 62,
             "fill": "mint",
@@ -1276,8 +1267,8 @@
           },
           {
             "id": "rework",
-            "x": 69,
-            "y": 189,
+            "x": 71,
+            "y": 194,
             "w": 150,
             "h": 62,
             "fill": "amber",
@@ -1286,7 +1277,7 @@
           {
             "id": "review",
             "x": 305,
-            "y": 165,
+            "y": 170,
             "w": 210,
             "h": 110,
             "fill": "violet",
@@ -1295,8 +1286,8 @@
           },
           {
             "id": "pay",
-            "x": 601,
-            "y": 189,
+            "x": 599,
+            "y": 194,
             "w": 150,
             "h": 62,
             "fill": "pink",
@@ -1306,14 +1297,8 @@
         "arrows": [
           {
             "from": "submit@right",
-            "to": "review@left",
-            "shape": "elbow",
-            "via": [
-              [
-                287,
-                91
-              ]
-            ]
+            "to": "review@top",
+            "shape": "elbow"
           },
           {
             "from": "review@right",
@@ -1321,7 +1306,7 @@
             "shape": "line",
             "label": "通过",
             "at": [
-              572,
+              557,
               205
             ]
           },
@@ -1332,17 +1317,17 @@
             "via": [
               [
                 410,
-                330
+                340
               ],
               [
-                144,
-                330
+                146,
+                340
               ]
             ],
             "label": "驳回",
             "at": [
-              345,
-              316
+              278,
+              326
             ]
           }
         ]

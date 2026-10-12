@@ -24,6 +24,9 @@
 .slide-arrow-label--blocked { fill: #c41d4f; }
 .slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }
 .slide-note--warn { fill: #c41d4f; font-weight: 700; }
+/* 泳道泳池：标题带与道间分隔线，弱化描边不抢流程 */
+.slide-swimlane-title { font-size: 16px; font-weight: 700; fill: #111; }
+.slide-swimlane-sep { fill: none; stroke: #1b1b1b; stroke-width: 1.2; opacity: .45; }
 /* 生命线（时序风格）与结束短杠：压暗虚线，只做时间轴示意，不表示关系强度。 */
 .slide-lifeline { fill: none; stroke: #111; stroke-width: 1.5; stroke-dasharray: 7 7; opacity: .35; }
 .slide-lifeline-end { fill: none; stroke: #111; stroke-width: 1.5; opacity: .35; }

@@ -55,6 +55,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `groups?` | array of groups | Framing containers that can also be semantic nodes |
 | `arrows` | array of arrows | Directed relationships |
 | `lifelines?` | array of `{of,to,at?,end?}` | Sequence-style dashed vertical guides under a node (decoration only, never a node) |
+| `swimlane?` | `{x,y,w,h,header?,lanes:[{id,title}…]}` | Swimlane pool: one outer frame, header band with lane titles, single separators between lanes. Each lane is a semantic node; frame and separators are decoration |
 | `ring?` | `{cx,cy,rx,ry}` | Shared elliptical route for `orbit` arrows; positive radii |
 | `notes?` | array of `{x,y,text,tone?,anchor?}` | Non-authoritative annotations; `tone: "warn"` adds emphasis |
 | `w?`, `h?` | numbers | Canvas dimensions |

@@ -227,6 +227,8 @@
     const shapes = new Map();
     for (const shape of [
       ...(diagram.groups || []).map(group => ({ ...group, label: group.title })),
+      // 泳道泳池的每一条道是语义节点（label 取道标题）；外框与分隔线不是节点
+      ...(diagram.swimlane?.lanes || []).map(lane => ({ ...lane, label: lane.title })),
       ...(diagram.boxes || [])
     ]) {
       if (shapes.has(shape.id)) errors.push(`Duplicate diagram node: ${shape.id}`);
