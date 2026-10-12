@@ -251,7 +251,24 @@
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
   // 箭头尖端贴合目标边界：线尾回退到三角内部（回退处三角半高 ≈ 0.458×回退量，须大于线半宽），出发端贴边
-  function route(shapes, arrow, ring, lifelines = new Map()) {
+  // 激活条半宽：消息端点落在条的近侧边缘而不是中心线上，箭头不会扎进执行条
+  const activationHalf = 7;
+  // 命中的激活条边缘：返回该生命线上、覆盖 y 的条边缘 x（offset 让末端再退 gap，箭头尖正好落在边缘）
+  function activationEdge(activations, lifelines, id, y, toward, offset) {
+    const line = lifelines.get(id);
+    if (!line) return null;
+    const shape = null;
+    let edge = null;
+    for (const activation of activations) {
+      if (activation.of !== id) continue;
+      if (y < Number(activation.from) || y > Number(activation.to)) continue;
+      const side = Math.sign(toward - line.x) || 1;
+      const candidate = line.x + side * (activationHalf + offset);
+      if (edge === null || Math.abs(candidate - toward) < Math.abs(edge - toward)) edge = candidate;
+    }
+    return edge;
+  }
+  function route(shapes, arrow, ring, lifelines = new Map(), activations = []) {
     if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 6, arrow.counter);
     const start = anchor(shapes, arrow.from, lifelines);
     const end = anchor(shapes, arrow.to, lifelines);
@@ -264,6 +281,16 @@
     const gap = arrow.kind === 'one' ? 0 : (arrow.size === 'sm' ? 3.3 : 6);
     const from = start.point;
     const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
+    // 生命线锚点落在激活条覆盖范围内时，端点平移到条的近侧边缘：出发端贴外侧、到达端贴来向那一侧
+    // 末端再多退 gap，让箭头尖正好落在条边缘（与 marker refX 的落点约定一致）
+    if (start.life && !arrow.via) {
+      const edge = activationEdge(activations, lifelines, arrow.from.split('@')[0], from.y, to.x, 0);
+      if (edge !== null) from.x = edge;
+    }
+    if (end.life && !arrow.via) {
+      const edge = activationEdge(activations, lifelines, arrow.to.split('@')[0], to.y, from.x, end.direction.x === 0 ? 0 : gap);
+      if (edge !== null) to.x = edge;
+    }
     const inward = { x: -end.direction.x, y: -end.direction.y };
     // 自调用：向右绕一个圆角矩形环再回到同一条生命线
     if (self && !arrow.via) {
@@ -508,7 +535,7 @@
       const small = arrow.size === 'sm';
       const kind = arrowKinds.has(arrow.kind) ? arrow.kind : 'flow';
       const path = element('path', {
-        d: route(shapes, arrow, slide.ring, lifelines), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
+        d: route(shapes, arrow, slide.ring, lifelines, activations), class: `slide-arrow slide-arrow--${kind}${small ? ' slide-arrow--sm' : ''}`,
         'marker-end': `url(#${prefix}-head-${kind}${small ? '-sm' : ''})`,
         'marker-start': startHeads[arrow.start] ? `url(#${prefix}-start-${arrow.start}${small ? '-sm' : ''})` : null,
         opacity: arrow.dim ? 0.4 : null
