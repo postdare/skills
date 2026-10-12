@@ -168,16 +168,17 @@
     }
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
-  // 箭头尖端与框边留 3px，出发端贴边
+  // 箭头尖端贴合目标边界：线尾回退到三角内部（回退处三角半高 ≈ 0.458×回退量，须大于线半宽），出发端贴边
   function route(shapes, arrow, ring, lifelines = new Map()) {
-    if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 3, arrow.counter);
+    if (arrow.shape === 'orbit') return orbit(ring, shapes.get(arrow.from), shapes.get(arrow.to), 6, arrow.counter);
     const start = anchor(shapes, arrow.from, lifelines);
     const end = anchor(shapes, arrow.to, lifelines);
     // 生命线锚点自身没有固定朝向：取「指向另一端」的水平方向；自调用（同一条生命线）向右出、向左回。
     const self = Boolean(start.life && end.life && start.point.x === end.point.x);
     if (!start.direction) start.direction = self ? { x: 1, y: 0 } : { x: Math.sign(end.point.x - start.point.x) || 1, y: 0 };
     if (!end.direction) end.direction = self ? { x: 1, y: 0 } : { x: Math.sign(start.point.x - end.point.x) || 1, y: 0 };
-    const gap = arrow.size === 'sm' ? 1.5 : 3;
+    // 与箭头标记 refX=8 对应：实心尖端越过线尾 (12−8)×1.5×scale，开放尖端 5.25×scale，刚好落到边界上
+    const gap = arrow.size === 'sm' ? 3.3 : 6;
     const from = start.point;
     const to = { x: end.point.x + end.direction.x * gap, y: end.point.y + end.direction.y * gap };
     const inward = { x: -end.direction.x, y: -end.direction.y };
@@ -240,7 +241,7 @@
     const defs = element('defs', {}, svg);
     for (const [kind, head] of Object.entries(heads)) {
       for (const [size, scale] of [['', 1], ['-sm', 0.55]]) {
-        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '11', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
+        const marker = element('marker', { id: `${prefix}-head-${kind}${size}`, viewBox: '0 0 12 12', refX: '8', refY: '6', markerWidth: 18 * scale, markerHeight: 18 * scale, orient: 'auto', markerUnits: 'userSpaceOnUse' }, defs);
         element('path', head.open
           ? { d: 'M 0.5 1 L 11.5 6 L 0.5 11', fill: 'none', stroke: head.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }
           : { d: 'M 0 0.5 L 12 6 L 0 11.5 z', fill: head.color }, marker);

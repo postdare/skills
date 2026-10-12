@@ -135,7 +135,7 @@ Messages between lifelines anchor with `id@life:<y>`:
 ```
 
 - The anchor sits on that node's lifeline at height `y`; the node must already declare a lifeline, otherwise rendering throws.
-- The direction is not fixed by the anchor but taken from the other endpoint, so a message always points into its target's lifeline with a 3px tip gap.
+- The direction is not fixed by the anchor but taken from the other endpoint, so a message always points into its target's lifeline with the arrowhead landing flush on it.
 - Two life anchors default to a straight horizontal `line`; declare `elbow`/`arc` explicitly to override.
 - Both endpoints on the **same** lifeline become a self-message: the route leaves right, runs down and returns with the arrowhead landing on the lifeline. `bend` sets the loop width (default 44; a labelled self-message needs ~70 so the label fits inside the loop instead of on its vertical).
 - Semantic matching strips everything after `@`, so `owner@life:240` still counts as node `owner`.
