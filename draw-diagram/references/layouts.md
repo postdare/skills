@@ -97,15 +97,19 @@ Rules that keep a sequence frame readable:
 - **Width:** four participants need roughly 940×400 and up; the default 720×450 canvas fits three comfortably.
 - Lifelines are decoration, never nodes: they carry no `content` entry, and the geometry checker ignores them (a message crossing a lifeline is not a defect).
 
-### Advanced sequence frames: activations, fragments, runtime-created objects
+### Advanced sequence frames: activations, fragments, footers
 
-For a call that shows execution periods, conditional/parallel fragments and an object created mid-interaction, keep the sequence rules above and add the sequence decorations from [frame-format.md](frame-format.md):
+For a call that shows execution periods, conditional/parallel fragments, participant footer boxes and an object created mid-interaction, keep the sequence rules above and add the sequence decorations from [frame-format.md](frame-format.md):
 
 - **Activation bars** (`diagram.activations: [{of, from, to, at?}]`) mark the window in which a participant is executing. `of` must be a node that already declares a lifeline, and `from < to` (both throw otherwise). Bars are 14 wide, centred on the lifeline, drawn under the arrows so message endpoints land on the bar's centre line. **Nesting is expressed by the coordinates alone**: an inner call's bar must end before the outer bar does, and a bar longer than a frame's worth of messages is a defect in the drawing, not the renderer. Give the controller and the service each at least one bar of a different length; a participant with no bar is simply idle during that interval.
+- **Participant footers** (`lifelines: [{of, foot: y}]`) duplicate the participant box at the bottom of its axis: the guide stops at `foot`, and a visual copy with the same `x/w/h/fill/label/icon/shape` is drawn with its top edge at that y. It is the cheapest way to close a long timeline — the reader gets the same box top and bottom and never has to re-identify a column. Use one shared `foot` for every participant so the copies form a straight bottom row, keep each participant's two boxes at the same `x/w`, and size the canvas so the row has ~30 units of margin below it. The copy is decoration (`slide-foot*` classes, invisible to the checker), so a message may end on it with `@life:<foot>` without any crossing error — in fact that is the intended reading: the last message arrives at the footer box.
+- **Multi-operand fragments** (`fragments[].sections: [{guard?}]`) divide one frame into N operands: the band under the tab is split into N equal segments with **dashed** divider lines, and each segment carries its own left-aligned guard. A `par` with two `sections` is the standard way to show two branches happening in parallel; **a top-level `guard` is ignored when `sections` is present**, so put the conditions on the sections instead. Budget each segment as `h/N ≥ 44 + message room`: the section guard sits 26 below its segment top, and the first message of the segment needs ~18 more.
+- **Dashed frames** (`fragments[].dashed: true`) draw the outline as `stroke-dasharray: 9 7`, the usual cue for a tentative or secondary region. It changes only the line style, so the guard/op budgets are unchanged. Use it when the frame is a secondary annotation rather than a primary control-flow panel.
+- **Self-action illustration.** An action that a participant performs internally is *not* a message, so do not invent an edge for it: draw a small box (`size: "sm"`) beside that participant's lifeline, mid-frame, with the action wording as its label and a warm fill (e.g. `amber`) to mark it as an aside. A `sm` box is exempt from semantic node comparison and its arrows (if any, also `size: "sm"`) are exempt from edge comparison — it illustrates mechanics without asserting a new business fact. Keep it out of `content`, clear of the fragment frames, and away from the lifeline's own message labels.
 - **Runtime-created object.** Draw it as an ordinary box with its literal name as the label (`订单对象\norder:Order`) placed to the right, mid-frame, with a **short lifeline**: `{of: 'obj', to: y, end: true}` where `to` is just below the box. Its creation is the message that points at it, and the reply leaves its own lifeline, so the box never needs a full-height time axis. Anchor the creation message with `obj@left:0.5` (the object has no lifeline above the box) and the reply with `obj@life:<y>`.
 - **Combined fragments** (`diagram.fragments`) are the Alt/Opt/Loop/Par panels. Declare the outer fragment first, then the nested one with smaller `x/y/w/h` inside it — array order is draw order, so the later panel covers the earlier one. `guard` (e.g. `[ 订单有效 ]`) is the fragment condition at `y+52`; `op` is the nesting label (`1.1.2`, then `1.1.2.1` for the inner one) rendered *left of* the frame, so leave ~40 units of margin and **put the numbering outside the frame's left edge**, not inside.
 - **Numbering** follows the `op` prefixes: top-level message `1`, then `1.1`, `1.1.1`, `1.1.1.1`, and inside the Par fragment `1.1.2.1.1` / `1.1.2.1.2`. Every number in the label must match its `content.edges` label; the checker compares labels and will not accept a number that exists on only one side.
-- **Budget the frame around its messages.** The tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70` when the fragment carries a guard (`top + 50` when it does not) and leave ~20 units under the last message. Order the fragments' message `y` values (creation above the reply, then the Par pair) and keep the fragment bands disjoint from the participant headers.
+- **Budget the frame around its messages.** The tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70` when the fragment carries a guard (`top + 50` when it does not); with `sections`, budget each section's own guard 26 below its top and its first message ~18 below that. Leave ~20 units under the last message. Order the fragments' message `y` values (creation above the reply, then the Par pair) and keep the fragment bands disjoint from the participant headers and from the footer row.
 - **Boundaries are ordinary groups.** Participant groupings are groups with `titleAlign: 'left'` for a primary solid boundary and `dashed: true` for a secondary one; both titles are semantic nodes and both groups are only framing — positions stay absolute, so place boxes and lifelines inside the group rectangles by hand.
 
 ```js
@@ -127,6 +131,39 @@ const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
 ```
 
 The demo frame `order-call-sequence` is the worked example: 1000×640, two boundaries, five participants plus a runtime-created `order:Order`, three activation bars, an `alt` guard with a nested `par`.
+
+A footer-and-sections frame is the other shape of the same style — four participants boxed top and bottom, a two-operand `par`, a dashed `loop`, and one `sm` aside for an internal action:
+
+```js
+const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
+  w: 960, h: 800,
+  boxes: [
+    { id: 'client', x: 65, y: 30, w: 170, h: 80, fill: 'sky', label: '客户端 App' },
+    { id: 'order-svc', x: 285, y: 30, w: 170, h: 80, fill: 'mint', label: '订单服务' },
+    { id: 'kitchen', x: 505, y: 30, w: 170, h: 80, fill: 'pink', label: '厨房' },
+    { id: 'rider', x: 725, y: 30, w: 170, h: 80, fill: 'violet', label: '骑手', icon: 'actor' },
+    { id: 'verify-pay', x: 380, y: 425, w: 110, h: 30, fill: 'amber', label: '校验商品并扣款', size: 'sm' }
+  ],
+  // 四个脚注框同一行：生命线止于 foot，副本盒顶正好落在 foot 上
+  lifelines: [ { of: 'client', foot: 690 }, { of: 'order-svc', foot: 690 }, { of: 'kitchen', foot: 690 }, { of: 'rider', foot: 690 } ],
+  fragments: [
+    { kind: 'par', x: 130, y: 150, w: 480, h: 210, dashed: true,
+      sections: [ { guard: '[通知厨房]' }, { guard: '[回复客户]' } ] },
+    { kind: 'loop', x: 130, y: 500, w: 700, h: 120, dashed: true, guard: '[直到送达]' }
+  ],
+  arrows: [
+    { from: 'client@life:140', to: 'order-svc@life:140', label: '提交订单', at: [260, 124] },
+    { from: 'order-svc@life:246', to: 'kitchen@life:246', label: '新订单票据', at: [480, 230] },
+    { from: 'order-svc@life:338', to: 'client@life:338', kind: 'reply', label: '已接单，预计 30 分钟', at: [260, 322] },
+    { from: 'kitchen@life:410', to: 'order-svc@life:410', kind: 'reply', label: '订单就绪', at: [480, 394] },
+    { from: 'order-svc@life:470', to: 'rider@life:470', label: '请求取餐', at: [540, 440] },
+    { from: 'rider@life:592', to: 'client@life:592', kind: 'reply', label: '分享实时位置', at: [480, 576] },
+    { from: 'rider@life:660', to: 'client@life:660', kind: 'reply', label: '订单送达', at: [480, 644] }
+  ]
+});
+```
+
+The demo frame `delivery-sequence` is the worked example: 960×800, four footer-boxed participants (`foot: 690` on each), a two-section dashed `par`, a dashed `loop`, an `actor` icon and one `sm` self-action aside.
 
 ## Swimlane style: one flow across roles
 

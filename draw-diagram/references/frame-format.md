@@ -54,9 +54,9 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `boxes` | array of boxes | Main semantic nodes or small illustrations |
 | `groups?` | array of groups | Framing containers that can also be semantic nodes |
 | `arrows` | array of arrows | Directed relationships |
-| `lifelines?` | array of `{of,to,at?,end?}` | Sequence-style dashed vertical guides under a node (decoration only, never a node) |
+| `lifelines?` | array of `{of,to?,at?,end?,foot?}` | Sequence-style dashed vertical guides under a node (decoration only, never a node); `foot` also draws a visual copy of that participant's box at that y |
 | `activations?` | array of `{of,from,to,at?}` | Sequence-style execution bars drawn on an existing lifeline (decoration only, never a node) |
-| `fragments?` | array of `{x,y,w,h,kind,guard?,op?,dim?}` | UML combined fragment panels such as Alt/Par (decoration only, never a node) |
+| `fragments?` | array of `{x,y,w,h,kind,guard?,sections?,op?,dashed?,dim?}` | UML combined fragment panels such as Alt/Par (decoration only, never a node) |
 | `swimlane?` | `{x,y,w,h,header?,lanes:[{id,title}…]}` | Swimlane pool: one outer frame, header band with lane titles, single separators between lanes. Each lane is a semantic node; frame and separators are decoration |
 | `ring?` | `{cx,cy,rx,ry}` | Shared elliptical route for `orbit` arrows; positive radii |
 | `notes?` | array of `{x,y,text,tone?,anchor?}` | Non-authoritative annotations; `tone: "warn"` adds emphasis |
@@ -70,7 +70,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 
 - `x/y` locate the top-left corner of the bounding box; `w/h` are positive dimensions. `r` overrides the corner radius of a `rect`.
 - `fill` is a named `Diagram.fills` color or a CSS color. Named families are `mint`, `pink`, `violet`, `sky`, `amber`, each with `Soft` and `Pale` variants, plus `gray`. Omitted fill uses mint.
-- `icon` adds a small line pictogram at the top of the box: `database`（存储）、`queue`（消息队列）、`user`（人/角色）、`cloud`（外部系统）、`clock`（定时/调度）. The label shifts down accordingly; budget `h ≥ 80` for icon + label, more with a `value`. Icons are pure visual vocabulary and never enter `content`.
+- `icon` adds a small line pictogram at the top of the box: `database`（存储）、`queue`（消息队列）、`user`（人/角色）、`cloud`（外部系统）、`clock`（定时/调度）、`actor`（时序参与者火柴人：头 + 躯干 + 双臂 + 双腿）. All icons share one 24×24 grid, one registry and one render path, so `actor` sits on the box top and shifts the label down exactly like the others. The label shifts down accordingly; budget `h ≥ 80` for icon + label, more with a `value`. Icons are pure visual vocabulary and never enter `content`.
 - `fields?: string[]` and `methods?: string[]` turn the box into a UML-style class box: the label moves to the top, a divider follows, then left-aligned member rows, another divider, then the method rows. Layout: label at `y+24`, first divider at `y+38`, rows at `y+58 + i*20` (13px); budget `h ≥ 67 + 20 × (行数)`. Members are semantic: `content` nodes must declare the same arrays (whitespace-normalized, elementwise). Compartments render only on main boxes and do not combine with `value` or `icon`.
 - `rows?: [{key?, name, type?}]` turns the box into an ER entity table: the label renders bold and centered at `y+24`, a horizontal divider at `y+38`, then one row per entry at baseline `y+58 + i*20` — `key` left-aligned at `x+10`, `name` left-aligned at `x+56`, `type` right-aligned at `x+w-12` — plus a vertical divider at `x+48` from `y+38` to `y+h-8` separating the key column. Budget `h ≥ 67 + 20 × (行数)` and enough width for the name and type columns. `rows` is mutually exclusive with `fields`/`methods` (when both appear, `rows` wins), keeps `data-shape="rect"`, and is semantic like members: `content` nodes must declare the same entries (`key`/`name`/`type` whitespace-normalized, elementwise; missing and empty compare equal).
 - `label` supports `\n`; `value` adds a smaller second line. Numeric zero renders. Keep line wrapping intentional.
@@ -138,7 +138,15 @@ For `line`, `arc` and `elbow`, use `id@side[:ratio]`; side is `top`, `right`, `b
 
 ### Lifelines and sequence-style messages
 
-`lifelines` draws a dashed vertical guide under a node — the time axis of a sequence diagram. Each entry is `{of, to, at?, end?}`: `of` is the node id, `to` is the y where the guide stops (default `h - 24`), `at` is the ratio along that node's width (default 0.5), and `end: true` adds a short closing bar. A node carries at most one lifeline, and a lifeline **is not a node**: it never enters `content`, never affects semantic matching, and is exempt from geometry collision rules (a message crossing another participant's lifeline is normal and intended).
+`lifelines` draws a dashed vertical guide under a node — the time axis of a sequence diagram. Each entry is `{of, to?, at?, end?, foot?}`: `of` is the node id, `to` is the y where the guide stops (default `h - 24`), `at` is the ratio along that node's width (default 0.5), `end: true` adds a short closing bar, and `foot` (a number) puts a **visual copy of that participant's box** at that y. A node carries at most one lifeline, and a lifeline **is not a node**: it never enters `content`, never affects semantic matching, and is exempt from geometry collision rules (a message crossing another participant's lifeline is normal and intended).
+
+`foot` is the life-line footer box: a duplicate of the participant drawn with the same `x/w/h/fill/label/icon/shape/dim`, only with `y` replaced by the given value, so the top edge of the copy sits exactly at `foot`. When `foot` is present it also *is* the y where the guide stops (it wins over `to`, and no `end` bar is needed): the participant's dashed axis runs from the header down to the footer box, and the two identical boxes symmetrise the participant top and bottom. The copy is pure decoration — it is rendered under its own `slide-foot*` classes, outside `.slide-box`/`.slide-shape`, so the geometry checker never sees it as a node and it can never trigger box-overlap, overflow, out-of-canvas or crossing errors. `foot` only works on a main box (a group has no box appearance to copy) and must be a finite number, otherwise rendering throws.
+
+Because the guide stops at `foot`, an arrow anchored with `@life:<foot>` lands exactly on the footer box's top edge — the copy reads as the participant receiving the message. Keep the two boxes of one participant on the same x/w and put all footers on one row (same `foot`) for the symmetric look.
+
+```json
+{ "lifelines": [ { "of": "client", "foot": 690 }, { "of": "order-svc", "foot": 690 } ] }
+```
 
 Messages between lifelines anchor with `id@life:<y>`:
 
@@ -167,13 +175,15 @@ Illustrations explain internal mechanics without adding authoritative relationsh
 - Draw order: after the lifelines, before the arrows — messages lie on top of the bar and their endpoints land on the bar's vertical centre, exactly like a UML interaction diagram.
 - Bars nest implicitly: to show a nested call, end the inner bar before the outer one ends (put its `to` above the outer `to`); nothing but the coordinates expresses nesting.
 
-`fragments` entry `{x,y,w,h,kind,guard?,op?,dim?}`:
+`fragments` entry `{x,y,w,h,kind,guard?,sections?,op?,dashed?,dim?}`:
 
 - `kind` is one of `alt`, `opt`, `loop`, `par` — any other value throws. Glyph and label follow the UML notation: `alt`/`opt` render `◇`, `loop` renders `↻`, `par` renders `=`, with the labels `Alt`/`Opt`/`Loop`/`Par`.
-- The panel is a `rect` with `rx: 4`, fill `#fff`, `fill-opacity: .92`, stroke `#111` width 1.5. The top-left tab is 78 wide and 26 tall (fill `#eceff2`) holding the glyph and label as 14px bold left-aligned text.
-- `guard` (non-empty) renders at `x+14`, `y+52` as left-aligned 14px text — the fragment's condition, written in brackets by convention. `op` (non-empty) renders *outside* the panel at `x-10`, `y+18` with `anchor: end`, so reserve at least ~40 units of margin left of the frame; nesting depth is expressed as an operating-expression prefix (`1.1.2` outside, `1.1.2.1` for its inner fragment).
+- The panel is a `rect` with `rx: 4`, fill `#fff`, `fill-opacity: .92`, stroke `#111` width 1.5. The top-left tab is 78 wide and 26 tall (fill `#eceff2`) holding the glyph and label as 14px bold left-aligned text. `dashed: true` switches the outline to `stroke-dasharray: 9 7` (the same cue as `group.dashed`); opacity and stroke width are unchanged. Reserve the tab's 78 units of width before the first section's text.
+- `guard` (non-empty) renders at `x+14`, `y+52` as left-aligned 14px text — the fragment's condition, written in brackets by convention.
+- `sections` splits a fragment into N operands: the body band from the bottom of the tab (`y+26`) to the frame bottom is divided into N equal segments, a **dashed** divider line spans each internal boundary, and each segment's `guard` is left-aligned at `x+14`, `sectionTop+26` (the same relative spot the single `guard` uses). Segment `i` starts at `y + 26 + (h - 26) × i / N`, so a `par` with two sections shows the two parallel branches as equal bands. **When `sections` is present the top-level `guard` is ignored**; with no `sections` the frame behaves exactly as before (one optional `guard` at `y+52`).
+- `op` (non-empty) renders *outside* the panel at `x-10`, `y+18` with `anchor: end`, so reserve at least ~40 units of margin left of the frame; nesting depth is expressed as an operating-expression prefix (`1.1.2` outside, `1.1.2.1` for its inner fragment).
 - Panels draw in array order, so a later panel covers an earlier one — declare an outer fragment before the one nested inside it, and shrink the inner `x/y/w/h` to sit within the outer frame.
-- Budget the frame so it **contains the messages it governs**: the tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70` when the fragment carries a guard (`top + 50` when it does not), and leave ~20 units of clearance above the bottom edge. Panels are drawn as a white underlay beneath the lifelines and activation bars, so lifelines and bars stay visible inside the fragment.
+- Budget the frame so it **contains the messages it governs**. With one `guard`, the tab occupies the top 26 units and the guard baseline sits 52 below the top, so budget the first message at `y ≥ top + 70`; with `sections`, budget the first section's guard at `top + 26 + 26 = top + 52` and the first message at `y ≥ top + 26 + 26 + 18` — i.e. each section needs ~44 units of lead-in for its own guard line, plus ~20 units of clearance above the bottom edge. Panels are drawn as a white underlay beneath the lifelines and activation bars, so lifelines and bars stay visible inside the fragment.
 
 ## Rendering and checking
 

@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 17,
-      "drawn": 17,
+      "frames": 18,
+      "drawn": 18,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -41,6 +41,12 @@
         },
         {
           "key": "order-call-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "delivery-sequence",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -116,8 +122,8 @@
     },
     {
       "width": 390,
-      "frames": 17,
-      "drawn": 17,
+      "frames": 18,
+      "drawn": 18,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -153,6 +159,12 @@
         },
         {
           "key": "order-call-sequence",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "delivery-sequence",
           "drawn": true,
           "errors": [],
           "hints": []

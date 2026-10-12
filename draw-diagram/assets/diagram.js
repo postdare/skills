@@ -5,8 +5,10 @@
   // 时序风格：diagram.lifelines 声明节点生命线（虚线，纯装饰），连线用「id@life:y」锚在生命线高度上；
   // 两条生命线之间的消息默认走直线，同一条生命线上的两端自动画成自调用环。
   // 进阶时序：diagram.activations 在生命线上加执行激活条，diagram.fragments 画 Alt/Opt/Loop/Par 组合片段框；
-  // 两者都是装饰（不进 content、不参与语义比对与几何检查）。层级：泳道/生命线之上是激活条，再是箭头与节点；
-  // 片段框是底衬，排在泳道/生命线之前，这样框内的生命线、激活条与消息线都不会被半透明白底洗淡。
+  // 片段框可用 sections 分若干 operands（段间虚线分隔、每段自带 guard），dashed 换虚线外框；
+  // lifelines[].foot 把生命线收在脚注 y 上并放一个参与者盒子的视觉副本；box.icon: 'actor' 是火柴人参与者。
+  // 以上都是装饰（不进 content、不参与语义比对与几何检查）。层级：泳道/生命线之上是激活条，再是箭头与节点；
+  // 脚注副本与主盒同层（箭头之上）；片段框是底衬，排在泳道/生命线之前，这样框内的生命线、激活条与消息线都不会被半透明白底洗淡。
   // 分组边界：group.dashed 用虚线描边，group.titleAlign: 'left' 让标题左对齐（默认为居中）。
   // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
@@ -74,6 +76,15 @@
     ],
     cloud: [
       { d: 'M7.2 18.6a4.3 4.3 0 0 1-.8-8.5 5.6 5.6 0 0 1 10.8-1.6 4.1 4.1 0 0 1 1.1 10.1Z' }
+    ],
+    // actor：时序图参与者火柴人（头 + 躯干 + 双臂 + 双腿）。五笔都在 24×24 网格内居中：
+    // 头心 (12,4.6) r 3.4，躯干 8→15.4，双臂 y 11.2 横跨 4.6→19.4，双腿从胯 (12,15.4) 斜到脚跟 (6.8/17.2,21.4)
+    actor: [
+      { cx: 12, cy: 4.6, r: 3.4 },
+      { d: 'M12 8v7.4' },
+      { d: 'M4.6 11.2h14.8' },
+      { d: 'M12 15.4 6.8 21.4' },
+      { d: 'M12 15.4l5.2 6' }
     ],
     clock: [
       { cx: 12, cy: 12, r: 8.3 },
@@ -375,14 +386,98 @@
     for (const group of slide.groups || []) shapes.set(group.id, group);
     for (const box of slide.boxes || []) shapes.set(box.id, box);
 
+    // 参与者盒子（含时序脚注副本）：一次渲染逻辑，主盒与脚注副本共用。
+    // box 是最终坐标与内容（脚注副本 = 主盒副本，仅把 y 换成 foot），variants 提供各组成部分的类名，
+    // 这样副本与主盒除了类名之外逐笔画一致（同 x/w/h/fill/label/icon/shape/status/dim）。
+    function paintOf(box) {
+      return {
+        fill: box.status === 'muted' ? fills.gray : fills[box.fill] || box.fill || fills.mint,
+        stroke: box.status === 'muted' ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none',
+        'stroke-width': box.status === 'muted' ? 1.5 : 3,
+        'stroke-dasharray': box.status === 'muted' ? '6 5' : null
+      };
+    }
+    function participantBox(box, layer, variants) {
+      const small = box.size === 'sm';
+      const muted = box.status === 'muted';
+      const kind = shapeOf(box);
+      const center = centerOf(box);
+      const shape = variants.shape;
+      const paint = { class: shape, ...paintOf(box) };
+      const dot = kind === 'initial' || kind === 'final';
+      if (kind === 'initial') element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: shape, fill: '#111' }, layer);
+      else if (kind === 'final') {
+        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: shape, fill: '#fff', stroke: '#111', 'stroke-width': 2.5 }, layer);
+        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2 * 0.55, fill: '#111' }, layer);
+      }
+      else if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
+      else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
+      else if (kind === 'trapezoid') element('path', { d: `M ${box.x} ${box.y} L ${box.x + box.w} ${box.y} L ${box.x + box.w * 0.88} ${box.y + box.h} L ${box.x + box.w * 0.12} ${box.y + box.h} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
+      else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
+      const cx = box.x + box.w / 2;
+      const cy = box.y + box.h / 2;
+      const icon = icons[box.icon];
+      if (icon && !dot) {
+        // 图标 24×24，占框顶一块；主框标签相应下移，sm 示意框等比缩小、标签不动
+        const scale = small ? 0.5 : 1;
+        const g = element('g', { class: 'slide-icon', transform: `translate(${cx - 12 * scale} ${box.y + (small ? 4 : 10)}) scale(${scale})` }, layer);
+        for (const part of icon) element(part.d !== undefined ? 'path' : 'circle', part, g);
+      }
+      const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
+      // 类图分栏：fields/methods 存在时标签置顶（y+24 加粗沿用 slide-box-label），其下分隔线，
+      // fields 逐行左对齐（行距 20），再分隔线，再 methods 逐行；sm 示意框忽略分栏。
+      // ER 实体行（rows，仅主框）：与 fields/methods 互斥且优先；标签置顶加分隔线后，
+      // 逐行渲染 key/name/type 三列，key 与 name 之间加一条竖分隔线。框高预算 h ≥ 67 + 20×行数。
+      const rows = !small && !dot && box.rows && box.rows.length ? box.rows : null;
+      const sectioned = !small && !dot && (rows || (box.fields && box.fields.length) || (box.methods && box.methods.length));
+      if (!dot) {
+        const labelY = sectioned ? box.y + 24 : icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
+        text(layer, cx, labelY, box.label, { class: `${variants.label}${muted ? ' is-muted' : ''}` });
+        if (hasValue && !sectioned) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `${variants.value}${muted ? ' is-muted' : ''}` });
+      }
+      if (rows) {
+        // ER 三列：水平分隔线 y+38；行基线 y+58+i*20；key 列 x+10、name 列 x+56 左对齐，type 列右对齐
+        element('path', { class: variants.divider, d: `M ${box.x + 10} ${box.y + 38} L ${box.x + box.w - 10} ${box.y + 38}` }, layer);
+        // key 与 name 之间的竖分隔线：x+48，从 y+38 到 y+h-8
+        element('path', { class: variants.divider, d: `M ${box.x + 48} ${box.y + 38} L ${box.x + 48} ${box.y + box.h - 8}` }, layer);
+        rows.forEach((row, index) => {
+          const y = box.y + 58 + index * 20;
+          if (row.key) text(layer, box.x + 10, y, row.key, { class: variants.key });
+          text(layer, box.x + 56, y, row.name, { class: variants.member });
+          if (row.type) text(layer, box.x + box.w - 12, y, row.type, { class: variants.type });
+        });
+      } else if (sectioned) {
+        const divider = y => element('path', { class: variants.divider, d: `M ${box.x + 10} ${y} L ${box.x + box.w - 10} ${y}` }, layer);
+        const members = (list, top) => list.forEach((member, index) => text(layer, box.x + 12, top + index * 20, member, { class: variants.member }));
+        const fields = box.fields || [];
+        const methods = box.methods || [];
+        divider(box.y + 38);
+        members(fields, box.y + 58);
+        if (fields.length && methods.length) divider(box.y + 58 + fields.length * 20 - 10);
+        members(methods, box.y + 58 + (fields.length ? fields.length * 20 : 0));
+      }
+      const badge = badges[box.status];
+      if (badge && !small && !dot) {
+        const at = badgeCenter(box);
+        element('circle', { class: 'slide-badge-dot', cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
+        text(layer, at.x, at.y + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
+      }
+    }
+
     // 生命线（时序风格）：从节点底边向下的虚线，纯装饰，只用于给 @life:<y> 锚点定位。
+    // lifelines[].foot：给定时生命线止于该 y，并在 y 处画一个与参与者盒子完全同款的视觉副本（脚注框）。
+    // 副本是装饰：类名走独立的 slide-foot/slide-foot-*，检查器选择器（.slide-box/.slide-group/.slide-shape/…）都看不到它。
     const lifelines = new Map();
     for (const line of slide.lifelines || []) {
       const shape = shapes.get(line.of);
       if (!shape) throw new Error(`生命线引用了不存在的框：${line.of}`);
       if (lifelines.has(line.of)) throw new Error(`同一节点只能有一条生命线：${line.of}`);
       const x = shape.x + shape.w * (line.at === undefined ? 0.5 : Number(line.at));
-      lifelines.set(line.of, { x, y1: boundary(shape, { x, y: shape.y + shape.h }).y, y2: line.to ?? height - 24, end: line.end });
+      // foot 直接采用给定数值（不吸附网格）：契约要求副本盒顶部落在该 y，y 同时是生命线的终点，
+      // 于是 @life:foot 的箭头端点正好落在副本盒上边缘上（contains 是严格不等式，不构成穿框）。
+      const foot = line.foot === undefined ? null : Number(line.foot);
+      if (foot !== null && !Number.isFinite(foot)) throw new Error(`生命线 foot 必须是数值：${line.of}`);
+      lifelines.set(line.of, { of: line.of, x, y1: boundary(shape, { x, y: shape.y + shape.h }).y, y2: foot ?? line.to ?? height - 24, end: line.end, foot });
     }
 
     for (const group of slide.groups || []) {
@@ -409,12 +504,26 @@
         if (!spec) throw new Error(`片段框 kind 只能是 alt/opt/loop/par：${fragment.kind}`);
         const { x, y } = fragment;
         const layer = element('g', { 'data-kind': fragment.kind, opacity: fragment.dim ? 0.4 : null }, fragmentLayer);
-        element('rect', { x, y, width: fragment.w, height: fragment.h, rx: 4, class: 'slide-fragment' }, layer);
+        // dashed: true 把外框描边换成虚线（与 group.dashed 同一观感，见 diagram.css）
+        element('rect', { x, y, width: fragment.w, height: fragment.h, rx: 4, class: `slide-fragment${fragment.dashed ? ' is-dashed' : ''}` }, layer);
         // 左上角标签条：宽 78、高 26，内含字形 + 英文缩写；14px bold 左对齐，两段文字起点相隔 20
         element('rect', { x, y, width: 78, height: 26, class: 'slide-fragment-tab' }, layer);
         text(layer, x + 12, y + 14, spec.glyph, { class: 'slide-fragment-tab-text' });
         text(layer, x + 32, y + 14, spec.label, { class: 'slide-fragment-tab-text' });
-        if (fragment.guard) text(layer, x + 14, y + 52, fragment.guard, { class: 'slide-fragment-guard' });
+        // sections：把「标签条以下 → 框底」的正文带均分为 N 段（每段一个 operands 分区），段间画虚线分隔线，
+        // 每段 guard 左对齐落在该段左上（x+14、段顶+26，即旧顶层 guard 的同一相对位置）。
+        // 有 sections 时忽略顶层 guard（契约），无 sections 时下面这支不进，行为与旧版逐字节相同。
+        const sections = fragment.sections;
+        if (sections && sections.length) {
+          const top = y + 26;
+          const band = fragment.h - 26;
+          const step = band / sections.length;
+          sections.forEach((section, index) => {
+            const sectionTop = top + step * index;
+            if (index) element('path', { d: `M ${x + 1} ${sectionTop} L ${x + fragment.w - 1} ${sectionTop}`, class: 'slide-fragment-divider' }, layer);
+            if (section && section.guard) text(layer, x + 14, sectionTop + 26, section.guard, { class: 'slide-fragment-guard' });
+          });
+        } else if (fragment.guard) text(layer, x + 14, y + 52, fragment.guard, { class: 'slide-fragment-guard' });
         if (fragment.op) text(layer, x - 10, y + 18, fragment.op, { class: 'slide-fragment-op' });
       }
     }
@@ -436,6 +545,25 @@
     for (const line of lifelines.values()) {
       element('path', { d: `M ${line.x} ${line.y1} L ${line.x} ${line.y2}`, class: 'slide-lifeline' }, lifeLayer);
       if (line.end) element('path', { d: `M ${line.x - 7} ${line.y2} L ${line.x + 7} ${line.y2}`, class: 'slide-lifeline-end' }, lifeLayer);
+    }
+    // 生命线脚注框（时序）：foot 处放一个参与者盒子的视觉副本（装饰，不是节点）。类名全部独立于
+    // .slide-box/.slide-group/.slide-shape/… 两族，检查器的框/标签/穿框判定都看不见它。
+    // **层级：排在消息线之前**，与片段框同为底衬——副本盒的白底洗不掉箭头与激活条，箭头标签也始终压在它上面；
+    // 消息线端点落在副本盒上边缘（y 与 foot 同值）时正好贴着盒边，不会扎进盒里。y 换成 foot，其余几何与主盒一致。
+    const mainBoxes = new Map((slide.boxes || []).map(box => [box.id, box]));
+    const feet = [...lifelines.values()].filter(line => line.foot !== null);
+    if (feet.length) {
+      const footLayer = element('g', { class: 'slide-feet' }, svg);
+      for (const line of feet) {
+        const shape = mainBoxes.get(line.of);
+        if (!shape) throw new Error(`生命线脚注框 foot 只能挂在主框上（容器没有盒子外观可复制）：${line.of}`);
+        const layer = element('g', { class: `slide-foot${shape.size === 'sm' ? ' slide-foot--sm' : ''}`, 'data-id': line.of, opacity: shape.dim ? 0.4 : null }, footLayer);
+        participantBox({ ...shape, y: line.foot }, layer, {
+          shape: 'slide-foot-shape', label: 'slide-foot-label', value: 'slide-foot-value',
+          member: 'slide-foot-member', divider: 'slide-foot-divider',
+          key: 'slide-foot-member slide-foot-key', type: 'slide-foot-member slide-foot-type'
+        });
+      }
     }
     // 激活条（时序）：生命线上一段 14 宽的窄条，表示该参与者在这段时间里正在执行。
     // 与生命线同为装饰：不进 content、不参与语义比对；类名刻意避开 .slide-shape/.slide-box/.slide-group/.slide-arrow，
@@ -463,73 +591,13 @@
 
     for (const box of slide.boxes || []) {
       const small = box.size === 'sm';
-      const muted = box.status === 'muted';
       const kind = shapeOf(box);
-      const center = centerOf(box);
       const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, 'data-shape': kind, opacity: box.dim ? 0.4 : null }, boxLayer);
-      const paint = {
-        class: 'slide-shape', fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
-        stroke: muted ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none', 'stroke-width': muted ? 1.5 : 3, 'stroke-dasharray': muted ? '6 5' : null
-      };
-      // initial/final：状态机起止圆点（实心点 / 牛眼），不写文字与角标
-      const dot = kind === 'initial' || kind === 'final';
-      if (kind === 'initial') element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: 'slide-shape', fill: '#111' }, layer);
-      else if (kind === 'final') {
-        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2, class: 'slide-shape', fill: '#fff', stroke: '#111', 'stroke-width': 2.5 }, layer);
-        element('circle', { cx: center.x, cy: center.y, r: Math.min(box.w, box.h) / 2 * 0.55, fill: '#111' }, layer);
-      }
-      else if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
-      else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
-      else if (kind === 'trapezoid') element('path', { d: `M ${box.x} ${box.y} L ${box.x + box.w} ${box.y} L ${box.x + box.w * 0.88} ${box.y + box.h} L ${box.x + box.w * 0.12} ${box.y + box.h} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
-      else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
-      const cx = box.x + box.w / 2;
-      const cy = box.y + box.h / 2;
-      const icon = icons[box.icon];
-      if (icon && !dot) {
-        // 图标 24×24，占框顶一块；主框标签相应下移，sm 示意框等比缩小、标签不动
-        const scale = small ? 0.5 : 1;
-        const g = element('g', { class: 'slide-icon', transform: `translate(${cx - 12 * scale} ${box.y + (small ? 4 : 10)}) scale(${scale})` }, layer);
-        for (const part of icon) element(part.d !== undefined ? 'path' : 'circle', part, g);
-      }
-      const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
-      // 类图分栏：fields/methods 存在时标签置顶（y+24 加粗沿用 slide-box-label），其下分隔线，
-      // fields 逐行左对齐（行距 20），再分隔线，再 methods 逐行；sm 示意框忽略分栏。
-      // ER 实体行（rows，仅主框）：与 fields/methods 互斥且优先；标签置顶加分隔线后，
-      // 逐行渲染 key/name/type 三列，key 与 name 之间加一条竖分隔线。框高预算 h ≥ 67 + 20×行数。
-      const rows = !small && !dot && box.rows && box.rows.length ? box.rows : null;
-      const sectioned = !small && !dot && (rows || (box.fields && box.fields.length) || (box.methods && box.methods.length));
-      if (!dot) {
-        const labelY = sectioned ? box.y + 24 : icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
-        text(layer, cx, labelY, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
-        if (hasValue && !sectioned) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
-      }
-      if (rows) {
-        // ER 三列：水平分隔线 y+38；行基线 y+58+i*20；key 列 x+10、name 列 x+56 左对齐，type 列右对齐
-        element('path', { class: 'slide-box-divider', d: `M ${box.x + 10} ${box.y + 38} L ${box.x + box.w - 10} ${box.y + 38}` }, layer);
-        // key 与 name 之间的竖分隔线：x+48，从 y+38 到 y+h-8
-        element('path', { class: 'slide-box-divider', d: `M ${box.x + 48} ${box.y + 38} L ${box.x + 48} ${box.y + box.h - 8}` }, layer);
-        rows.forEach((row, index) => {
-          const y = box.y + 58 + index * 20;
-          if (row.key) text(layer, box.x + 10, y, row.key, { class: 'slide-box-member slide-box-key' });
-          text(layer, box.x + 56, y, row.name, { class: 'slide-box-member' });
-          if (row.type) text(layer, box.x + box.w - 12, y, row.type, { class: 'slide-box-member slide-box-type' });
-        });
-      } else if (sectioned) {
-        const divider = y => element('path', { class: 'slide-box-divider', d: `M ${box.x + 10} ${y} L ${box.x + box.w - 10} ${y}` }, layer);
-        const members = (list, top) => list.forEach((member, index) => text(layer, box.x + 12, top + index * 20, member, { class: 'slide-box-member' }));
-        const fields = box.fields || [];
-        const methods = box.methods || [];
-        divider(box.y + 38);
-        members(fields, box.y + 58);
-        if (fields.length && methods.length) divider(box.y + 58 + fields.length * 20 - 10);
-        members(methods, box.y + 58 + (fields.length ? fields.length * 20 : 0));
-      }
-      const badge = badges[box.status];
-      if (badge && !small && !dot) {
-        const at = badgeCenter(box);
-        element('circle', { class: 'slide-badge-dot', cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
-        text(layer, at.x, at.y + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
-      }
+      participantBox(box, layer, {
+        shape: 'slide-shape', label: 'slide-box-label', value: 'slide-box-value',
+        member: 'slide-box-member', divider: 'slide-box-divider',
+        key: 'slide-box-member slide-box-key', type: 'slide-box-member slide-box-type'
+      });
     }
     for (const arrow of slide.arrows || []) {
       const small = arrow.size === 'sm';

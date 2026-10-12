@@ -942,6 +942,239 @@
       }
     },
     {
+      "id": "delivery-sequence",
+      "title": "外卖履约时序：脚注框与分区片段",
+      "note": "时序进阶：四位参与者各带一条生命线，并在生命线末端各放一个同款脚注框（foot），上下对称；Par 片段分两区（[通知厨房] / [回复客户]），Loop 片段守卫 [直到送达]，片段框统一虚线；订单服务生命线旁的 amber 小框是「校验商品并扣款」的内部动作示意，不进 content。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "client",
+            "label": "客户端 App"
+          },
+          {
+            "id": "order-svc",
+            "label": "订单服务"
+          },
+          {
+            "id": "kitchen",
+            "label": "厨房"
+          },
+          {
+            "id": "rider",
+            "label": "骑手"
+          }
+        ],
+        "edges": [
+          {
+            "from": "client",
+            "to": "order-svc",
+            "label": "提交订单"
+          },
+          {
+            "from": "order-svc",
+            "to": "kitchen",
+            "label": "新订单票据"
+          },
+          {
+            "from": "order-svc",
+            "to": "client",
+            "label": "已接单，预计 30 分钟",
+            "kind": "reply"
+          },
+          {
+            "from": "kitchen",
+            "to": "order-svc",
+            "label": "订单就绪",
+            "kind": "reply"
+          },
+          {
+            "from": "order-svc",
+            "to": "rider",
+            "label": "请求取餐"
+          },
+          {
+            "from": "rider",
+            "to": "client",
+            "label": "分享实时位置",
+            "kind": "reply"
+          },
+          {
+            "from": "rider",
+            "to": "client",
+            "label": "订单送达",
+            "kind": "reply"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 960,
+        "h": 800,
+        "boxes": [
+          {
+            "id": "client",
+            "x": 65,
+            "y": 30,
+            "w": 170,
+            "h": 80,
+            "fill": "sky",
+            "label": "客户端 App"
+          },
+          {
+            "id": "order-svc",
+            "x": 285,
+            "y": 30,
+            "w": 170,
+            "h": 80,
+            "fill": "mint",
+            "label": "订单服务"
+          },
+          {
+            "id": "kitchen",
+            "x": 505,
+            "y": 30,
+            "w": 170,
+            "h": 80,
+            "fill": "pink",
+            "label": "厨房"
+          },
+          {
+            "id": "rider",
+            "x": 725,
+            "y": 30,
+            "w": 170,
+            "h": 80,
+            "fill": "violet",
+            "label": "骑手",
+            "icon": "actor"
+          },
+          {
+            "id": "verify-pay",
+            "x": 380,
+            "y": 425,
+            "w": 110,
+            "h": 30,
+            "fill": "amber",
+            "label": "校验商品并扣款",
+            "size": "sm"
+          }
+        ],
+        "lifelines": [
+          {
+            "of": "client",
+            "foot": 690
+          },
+          {
+            "of": "order-svc",
+            "foot": 690
+          },
+          {
+            "of": "kitchen",
+            "foot": 690
+          },
+          {
+            "of": "rider",
+            "foot": 690
+          }
+        ],
+        "fragments": [
+          {
+            "kind": "par",
+            "x": 130,
+            "y": 150,
+            "w": 480,
+            "h": 210,
+            "dashed": true,
+            "sections": [
+              {
+                "guard": "[通知厨房]"
+              },
+              {
+                "guard": "[回复客户]"
+              }
+            ]
+          },
+          {
+            "kind": "loop",
+            "x": 130,
+            "y": 500,
+            "w": 700,
+            "h": 120,
+            "dashed": true,
+            "guard": "[直到送达]"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "client@life:140",
+            "to": "order-svc@life:140",
+            "label": "提交订单",
+            "at": [
+              260,
+              124
+            ]
+          },
+          {
+            "from": "order-svc@life:246",
+            "to": "kitchen@life:246",
+            "label": "新订单票据",
+            "at": [
+              480,
+              230
+            ]
+          },
+          {
+            "from": "order-svc@life:338",
+            "to": "client@life:338",
+            "kind": "reply",
+            "label": "已接单，预计 30 分钟",
+            "at": [
+              260,
+              322
+            ]
+          },
+          {
+            "from": "kitchen@life:410",
+            "to": "order-svc@life:410",
+            "kind": "reply",
+            "label": "订单就绪",
+            "at": [
+              480,
+              394
+            ]
+          },
+          {
+            "from": "order-svc@life:470",
+            "to": "rider@life:470",
+            "label": "请求取餐",
+            "at": [
+              540,
+              440
+            ]
+          },
+          {
+            "from": "rider@life:592",
+            "to": "client@life:592",
+            "kind": "reply",
+            "label": "分享实时位置",
+            "at": [
+              480,
+              576
+            ]
+          },
+          {
+            "from": "rider@life:660",
+            "to": "client@life:660",
+            "kind": "reply",
+            "label": "订单送达",
+            "at": [
+              480,
+              644
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "ops-architecture",
       "title": "巡检架构：节点图标",
       "note": "六种角色各带图标：人、调度、队列、服务、数据库、外部系统；消费关系用异步线型（async）。来源：demo/brief.md。",

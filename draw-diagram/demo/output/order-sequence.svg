@@ -4,6 +4,19 @@
 .slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }
 .slide-box--sm .slide-box-label { font-size: 9.5px; }
 .slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
+/* 生命线脚注框（lifelines[].foot）：参与者盒子的视觉副本，装饰而非节点。类名全部独立于
+   .slide-box/.slide-group/.slide-shape/.slide-arrow 两族，检查器选择器看不到它，因此不会触发
+   文字溢出/框重叠/穿框等几何判定；填充与描边照搬主盒（在 diagram.js 里作为属性给出）。
+   块内顺序即优先级：ER 单元格同时带 .slide-foot-member 与 .slide-foot-key/.slide-foot-type，
+   三者都是「元素 + 类」，靠「来源顺序在后」让 key 加粗、type 右对齐（与主盒 ER 列同款）。 */
+.slide-foot-label { font-size: 20px; font-weight: 700; fill: #111; }
+.slide-foot--sm .slide-foot-label { font-size: 9.5px; }
+.slide-foot-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
+.slide text.slide-foot-member { font-size: 13px; font-weight: 500; fill: #1d2125; text-anchor: start; }
+.slide text.slide-foot-key { font-weight: 600; }
+.slide text.slide-foot-type { fill: #5d6670; text-anchor: end; }
+.slide-foot-divider { stroke: #111; stroke-width: 1.2; opacity: .25; }
+.slide-foot-label.is-muted, .slide-foot-value.is-muted { fill: #5d6670; }
 /* 类图分栏：成员行左对齐小字，分隔线为压暗细线 */
 .slide text.slide-box-member { font-size: 13px; font-weight: 500; fill: #1d2125; text-anchor: start; }
 /* ER 行三列：key 列加粗，type 列压暗并右对齐（与 member 同优先级、靠后出现以覆盖 text-anchor） */
@@ -39,7 +52,11 @@
    面板是片段底衬，排在生命线之前（见 diagram.js），消息线、生命线与激活条因此都画在它之上、
    一个像素都不会被它的白底洗淡；面板自身 92% 不透明度的描边仍足以让四条边框（含底边）清晰可辨。 */
 .slide-fragment { fill: #fff; opacity: .92; stroke: #111; stroke-width: 1.5; }
+/* fragments[].dashed: 虚线外框（次要/试探性的组合片段），仅换描边线型，不透明度与宽度不变 */
+.slide-fragment.is-dashed { stroke-dasharray: 9 7; }
 .slide-fragment-tab { fill: #eceff2; stroke: #111; stroke-width: 1.5; }
+/* fragments[].sections 的分区虚线：标签条以下每段的段间分隔线，横向从外框内缘到内缘（x+1 → x+w−1） */
+.slide-fragment-divider { fill: none; stroke: #111; stroke-width: 1.2; opacity: .5; stroke-dasharray: 6 5; }
 /* 左对齐/右对齐文本：`.slide text` 的 text-anchor: middle 同优先级，必须用「元素 + 类」才覆盖得住 */
 .slide text.slide-fragment-tab-text { font-size: 14px; font-weight: 700; fill: #111; text-anchor: start; }
 .slide text.slide-fragment-guard { font-size: 14px; fill: #111; text-anchor: start; }
