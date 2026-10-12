@@ -796,11 +796,11 @@
           {
             "from": "scheduler@right",
             "to": "queue@left",
-            "shape": "line",
+            "shape": "arc",
             "label": "定时投递",
             "at": [
-              268,
-              334
+              262,
+              330
             ]
           },
           {
