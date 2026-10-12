@@ -1867,6 +1867,842 @@
           }
         ]
       }
+    },
+    {
+      "id": "fulfillment-swimlane",
+      "title": "履约泳道：五角色复杂流",
+      "note": "复杂泳道：五条竖道、两个判断菱形、缺货与支付失败双回流、签收回流跨四道。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "customer",
+            "label": "客户"
+          },
+          {
+            "id": "order-svc",
+            "label": "订单服务"
+          },
+          {
+            "id": "finance",
+            "label": "财务"
+          },
+          {
+            "id": "warehouse",
+            "label": "仓储"
+          },
+          {
+            "id": "logistics",
+            "label": "物流"
+          },
+          {
+            "id": "submit",
+            "label": "提交订单"
+          },
+          {
+            "id": "check",
+            "label": "库存充足？"
+          },
+          {
+            "id": "create",
+            "label": "创建订单"
+          },
+          {
+            "id": "payment",
+            "label": "支付成功？"
+          },
+          {
+            "id": "pick",
+            "label": "拣货打包"
+          },
+          {
+            "id": "ship",
+            "label": "揽收配送"
+          },
+          {
+            "id": "sign",
+            "label": "签收"
+          }
+        ],
+        "edges": [
+          {
+            "from": "submit",
+            "to": "check"
+          },
+          {
+            "from": "check",
+            "to": "create",
+            "label": "充足"
+          },
+          {
+            "from": "check",
+            "to": "submit",
+            "label": "缺货"
+          },
+          {
+            "from": "create",
+            "to": "payment"
+          },
+          {
+            "from": "payment",
+            "to": "pick",
+            "label": "成功"
+          },
+          {
+            "from": "payment",
+            "to": "create",
+            "label": "失败"
+          },
+          {
+            "from": "pick",
+            "to": "ship"
+          },
+          {
+            "from": "ship",
+            "to": "sign"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 980,
+        "h": 560,
+        "swimlane": {
+          "x": 14,
+          "y": 14,
+          "w": 952,
+          "h": 532,
+          "lanes": [
+            {
+              "id": "customer",
+              "title": "客户"
+            },
+            {
+              "id": "order-svc",
+              "title": "订单服务"
+            },
+            {
+              "id": "finance",
+              "title": "财务"
+            },
+            {
+              "id": "warehouse",
+              "title": "仓储"
+            },
+            {
+              "id": "logistics",
+              "title": "物流"
+            }
+          ]
+        },
+        "boxes": [
+          {
+            "id": "submit",
+            "x": 44,
+            "y": 79,
+            "w": 130,
+            "h": 62,
+            "fill": "sky",
+            "label": "提交订单"
+          },
+          {
+            "id": "check",
+            "x": 215,
+            "y": 150,
+            "w": 170,
+            "h": 100,
+            "fill": "violet",
+            "shape": "diamond",
+            "label": "库存充足？"
+          },
+          {
+            "id": "create",
+            "x": 235,
+            "y": 349,
+            "w": 130,
+            "h": 62,
+            "fill": "mint",
+            "label": "创建订单"
+          },
+          {
+            "id": "payment",
+            "x": 400,
+            "y": 173,
+            "w": 180,
+            "h": 104,
+            "fill": "amber",
+            "shape": "diamond",
+            "label": "支付成功？"
+          },
+          {
+            "id": "pick",
+            "x": 645,
+            "y": 194,
+            "w": 130,
+            "h": 62,
+            "fill": "pink",
+            "label": "拣货打包"
+          },
+          {
+            "id": "ship",
+            "x": 816,
+            "y": 194,
+            "w": 130,
+            "h": 62,
+            "fill": "pinkSoft",
+            "label": "揽收配送"
+          },
+          {
+            "id": "sign",
+            "x": 44,
+            "y": 439,
+            "w": 130,
+            "h": 62,
+            "fill": "mintSoft",
+            "label": "签收"
+          }
+        ],
+        "arrows": [
+          {
+            "from": "submit@right",
+            "to": "check@top",
+            "shape": "elbow"
+          },
+          {
+            "from": "check@bottom",
+            "to": "create@top",
+            "shape": "line",
+            "label": "充足",
+            "at": [
+              340,
+              296
+            ]
+          },
+          {
+            "from": "check@left",
+            "to": "submit@bottom",
+            "shape": "elbow",
+            "label": "缺货",
+            "at": [
+              160,
+              182
+            ]
+          },
+          {
+            "from": "create@right",
+            "to": "payment@bottom",
+            "shape": "elbow",
+            "via": [
+              [
+                490,
+                380
+              ]
+            ]
+          },
+          {
+            "from": "payment@right",
+            "to": "pick@left",
+            "shape": "line",
+            "label": "成功",
+            "at": [
+              612,
+              207
+            ]
+          },
+          {
+            "from": "payment@top",
+            "to": "create@bottom",
+            "shape": "elbow",
+            "via": [
+              [
+                490,
+                120
+              ],
+              [
+                205,
+                120
+              ],
+              [
+                205,
+                470
+              ],
+              [
+                300,
+                470
+              ]
+            ],
+            "label": "失败",
+            "at": [
+              340,
+              104
+            ]
+          },
+          {
+            "from": "pick@right",
+            "to": "ship@left",
+            "shape": "line"
+          },
+          {
+            "from": "ship@bottom",
+            "to": "sign@bottom",
+            "shape": "elbow",
+            "via": [
+              [
+                881,
+                540
+              ],
+              [
+                109,
+                540
+              ]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ecommerce-er",
+      "title": "电商数据模型：复杂 ER",
+      "note": "七实体七关系：one 短杠贴「一」侧、many 鸦脚贴「多」侧，含分类自引用父子关系。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          {
+            "id": "customer",
+            "label": "客户",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "name": "phone",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "address",
+            "label": "收货地址",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "receiver",
+                "type": "citext"
+              },
+              {
+                "name": "detail",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "order",
+            "label": "订单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "address_id",
+                "type": "bigint"
+              },
+              {
+                "name": "total_amount",
+                "type": "numeric"
+              },
+              {
+                "name": "status",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "payment",
+            "label": "支付单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "name": "amount",
+                "type": "numeric"
+              },
+              {
+                "name": "method",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "item",
+            "label": "订单明细",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "product_id",
+                "type": "bigint"
+              },
+              {
+                "name": "quantity",
+                "type": "integer"
+              },
+              {
+                "name": "unit_price",
+                "type": "numeric"
+              }
+            ]
+          },
+          {
+            "id": "product",
+            "label": "商品",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "sku",
+                "type": "citext"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "key": "FK",
+                "name": "category_id",
+                "type": "bigint"
+              }
+            ]
+          },
+          {
+            "id": "category",
+            "label": "分类",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "key": "FK",
+                "name": "parent_id",
+                "type": "bigint"
+              }
+            ]
+          }
+        ],
+        "edges": [
+          {
+            "from": "customer",
+            "to": "order",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "customer",
+            "to": "address",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "order",
+            "to": "item",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "order",
+            "to": "payment",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "product",
+            "to": "item",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "category",
+            "to": "product",
+            "label": "1:N",
+            "kind": "many",
+            "start": "one"
+          },
+          {
+            "from": "category",
+            "to": "category",
+            "label": "父子",
+            "kind": "many",
+            "start": "one"
+          }
+        ]
+      },
+      "diagram": {
+        "w": 1010,
+        "h": 620,
+        "boxes": [
+          {
+            "id": "customer",
+            "x": 30,
+            "y": 72,
+            "w": 210,
+            "h": 130,
+            "fill": "sky",
+            "label": "客户",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "name": "phone",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "address",
+            "x": 30,
+            "y": 260,
+            "w": 210,
+            "h": 150,
+            "fill": "skySoft",
+            "label": "收货地址",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "name": "receiver",
+                "type": "citext"
+              },
+              {
+                "name": "detail",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "order",
+            "x": 330,
+            "y": 220,
+            "w": 230,
+            "h": 170,
+            "fill": "mint",
+            "label": "订单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "customer_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "address_id",
+                "type": "bigint"
+              },
+              {
+                "name": "total_amount",
+                "type": "numeric"
+              },
+              {
+                "name": "status",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "payment",
+            "x": 330,
+            "y": 450,
+            "w": 230,
+            "h": 150,
+            "fill": "mintSoft",
+            "label": "支付单",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "name": "amount",
+                "type": "numeric"
+              },
+              {
+                "name": "method",
+                "type": "citext"
+              }
+            ]
+          },
+          {
+            "id": "item",
+            "x": 650,
+            "y": 220,
+            "w": 240,
+            "h": 170,
+            "fill": "amber",
+            "label": "订单明细",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "order_id",
+                "type": "bigint"
+              },
+              {
+                "key": "FK",
+                "name": "product_id",
+                "type": "bigint"
+              },
+              {
+                "name": "quantity",
+                "type": "integer"
+              },
+              {
+                "name": "unit_price",
+                "type": "numeric"
+              }
+            ]
+          },
+          {
+            "id": "product",
+            "x": 650,
+            "y": 450,
+            "w": 240,
+            "h": 150,
+            "fill": "amberSoft",
+            "label": "商品",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "sku",
+                "type": "citext"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "key": "FK",
+                "name": "category_id",
+                "type": "bigint"
+              }
+            ]
+          },
+          {
+            "id": "category",
+            "x": 650,
+            "y": 72,
+            "w": 240,
+            "h": 130,
+            "fill": "violet",
+            "label": "分类",
+            "rows": [
+              {
+                "key": "PK",
+                "name": "id",
+                "type": "bigint"
+              },
+              {
+                "name": "name",
+                "type": "citext"
+              },
+              {
+                "key": "FK",
+                "name": "parent_id",
+                "type": "bigint"
+              }
+            ]
+          }
+        ],
+        "arrows": [
+          {
+            "from": "customer@right",
+            "to": "order@top",
+            "shape": "elbow",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              340,
+              112
+            ]
+          },
+          {
+            "from": "customer@bottom",
+            "to": "address@top",
+            "shape": "line",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              170,
+              228
+            ]
+          },
+          {
+            "from": "order@right",
+            "to": "item@left",
+            "shape": "line",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              605,
+              288
+            ]
+          },
+          {
+            "from": "order@bottom",
+            "to": "payment@top",
+            "shape": "line",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              480,
+              418
+            ]
+          },
+          {
+            "from": "product@top",
+            "to": "item@bottom",
+            "shape": "line",
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              806,
+              418
+            ]
+          },
+          {
+            "from": "category@right",
+            "to": "product@right",
+            "shape": "elbow",
+            "via": [
+              [
+                930,
+                137
+              ],
+              [
+                930,
+                525
+              ]
+            ],
+            "kind": "many",
+            "start": "one",
+            "label": "1:N",
+            "at": [
+              955,
+              330
+            ],
+            "anchor": "start"
+          },
+          {
+            "from": "category@top:0.3",
+            "to": "category@top:0.7",
+            "shape": "elbow",
+            "via": [
+              [
+                722,
+                18
+              ],
+              [
+                818,
+                18
+              ]
+            ],
+            "kind": "many",
+            "start": "one",
+            "label": "父子",
+            "at": [
+              770,
+              38
+            ]
+          }
+        ]
+      }
     }
   ]
 }

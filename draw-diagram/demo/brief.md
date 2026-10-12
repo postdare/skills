@@ -95,3 +95,27 @@
 四个象限各放一件事：重要紧急（修复线上故障）、重要不紧急（版本规划）、紧急不重要（临时会议）、不重要不紧急（整理文档）。横轴「紧急 →」，纵轴「重要 →」。没有箭头，没有状态角标。
 
 构图：2×2 四个 group 铺满 720×450 画布，中间留十字空隙；轴方向用 notes 标注在空隙与外侧留白中。
+
+## fulfillment-swimlane：履约泳道（复杂流）
+
+五个角色各执一段：客户、订单服务、财务、仓储、物流。流程：客户「提交订单」→ 订单服务判断「库存充足？」；充足则「创建订单」，缺货则退回客户「提交订单」；创建订单 → 财务判断「支付成功？」；成功则仓储「拣货打包」→ 物流「揽收配送」；失败则退回订单服务「创建订单」；最后客户「签收」。
+
+边：提交订单 → 库存充足？（无标签）；库存充足？ → 创建订单「充足」；库存充足？ → 提交订单「缺货」；创建订单 → 支付成功？（无标签）；支付成功？ → 拣货打包「成功」；支付成功？ → 创建订单「失败」；拣货打包 → 揽收配送（无标签）；揽收配送 → 签收（无标签）。没有状态角标。
+
+构图：泳道泳池五条竖道铺满 980×560 画布；两个判断菱形各占一道；两条回流（缺货 3 段、失败 4 段）与签收跨四道的回程都必须横平竖直、末端留直线段给箭头，标签只落在长线段上。
+
+## ecommerce-er：电商数据模型（复杂 ER）
+
+七个实体，各为 rows 三列表（键标记 / 列名 / 类型）：
+
+- 客户：PK id bigint；name citext；phone citext。
+- 收货地址：PK id bigint；FK customer_id bigint；receiver citext；detail citext。
+- 订单：PK id bigint；FK customer_id bigint；FK address_id bigint；total_amount numeric；status citext。
+- 支付单：PK id bigint；FK order_id bigint；amount numeric；method citext。
+- 订单明细：PK id bigint；FK order_id bigint；FK product_id bigint；quantity integer；unit_price numeric。
+- 商品：PK id bigint；sku citext；name citext；FK category_id bigint。
+- 分类：PK id bigint；name citext；FK parent_id bigint。
+
+关系七条，均为 start one + kind many（短杠贴「一」侧、鸦脚贴「多」侧）：客户 → 订单「1:N」；客户 → 收货地址「1:N」；订单 → 订单明细「1:N」；订单 → 支付单「1:N」；商品 → 订单明细「1:N」；分类 → 商品「1:N」；分类 → 分类「父子」（自引用）。没有状态角标。
+
+构图：1010×620 画布，七个实体按依赖分列布居；自引用用实体上方的小环（elbow），跨列长关系沿右侧竖走线。

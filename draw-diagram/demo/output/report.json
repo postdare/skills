@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 13,
-      "drawn": 13,
+      "frames": 15,
+      "drawn": 15,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -83,6 +83,18 @@
         },
         {
           "key": "priority-matrix",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "fulfillment-swimlane",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "ecommerce-er",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -92,8 +104,8 @@
     },
     {
       "width": 390,
-      "frames": 13,
-      "drawn": 13,
+      "frames": 15,
+      "drawn": 15,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -171,6 +183,18 @@
         },
         {
           "key": "priority-matrix",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "fulfillment-swimlane",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "ecommerce-er",
           "drawn": true,
           "errors": [],
           "hints": []
