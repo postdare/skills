@@ -735,7 +735,7 @@
           {
             "id": "scheduler",
             "x": 40,
-            "y": 300,
+            "y": 330,
             "w": 170,
             "h": 84,
             "fill": "amber",
@@ -796,11 +796,11 @@
           {
             "from": "scheduler@right",
             "to": "queue@left",
-            "shape": "arc",
+            "shape": "line",
             "label": "定时投递",
             "at": [
-              262,
-              330
+              268,
+              354
             ]
           },
           {
