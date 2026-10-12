@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 3,
-      "drawn": 3,
+      "frames": 4,
+      "drawn": 4,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -23,6 +23,12 @@
         },
         {
           "key": "service-boundaries",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "shape-vocabulary",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -32,8 +38,8 @@
     },
     {
       "width": 390,
-      "frames": 3,
-      "drawn": 3,
+      "frames": 4,
+      "drawn": 4,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -51,6 +57,12 @@
         },
         {
           "key": "service-boundaries",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "shape-vocabulary",
           "drawn": true,
           "errors": [],
           "hints": []

@@ -103,6 +103,43 @@
           { "from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358] }
         ]
       }
+    },
+    {
+      "id": "shape-vocabulary",
+      "title": "审核分支：四种外形",
+      "note": "四种外形各担一种语义：椭圆起止、矩形步骤、菱形判断、胶囊状态。菱形与胶囊需要更大的外接框，因此画布为 820×450。来源：demo/brief.md。",
+      "content": {
+        "nodes": [
+          { "id": "start", "label": "开始" },
+          { "id": "submit", "label": "提交变更" },
+          { "id": "gate", "label": "审核通过？" },
+          { "id": "ship", "label": "上线", "status": "ok" },
+          { "id": "revise", "label": "修改", "status": "warn" }
+        ],
+        "edges": [
+          { "from": "start", "to": "submit" },
+          { "from": "submit", "to": "gate" },
+          { "from": "gate", "to": "ship", "label": "通过" },
+          { "from": "gate", "to": "revise", "label": "驳回" }
+        ]
+      },
+      "diagram": {
+        "w": 820,
+        "h": 450,
+        "boxes": [
+          { "id": "start", "shape": "ellipse", "x": 20, "y": 190, "w": 140, "h": 70, "fill": "sky", "label": "开始" },
+          { "id": "submit", "x": 200, "y": 190, "w": 150, "h": 70, "fill": "mintSoft", "label": "提交变更" },
+          { "id": "gate", "shape": "diamond", "x": 390, "y": 160, "w": 220, "h": 130, "fill": "amber", "label": "审核通过？" },
+          { "id": "ship", "shape": "pill", "x": 680, "y": 193, "w": 120, "h": 64, "fill": "mint", "label": "上线", "status": "ok" },
+          { "id": "revise", "shape": "pill", "x": 680, "y": 305, "w": 120, "h": 64, "fill": "pink", "label": "修改", "status": "warn" }
+        ],
+        "arrows": [
+          { "from": "start@right", "to": "submit@left", "shape": "line" },
+          { "from": "submit@right", "to": "gate@left", "shape": "line" },
+          { "from": "gate@right", "to": "ship@left", "shape": "line", "label": "通过", "at": [643, 205] },
+          { "from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305] }
+        ]
+      }
     }
   ]
 }

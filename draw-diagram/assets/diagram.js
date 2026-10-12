@@ -2,6 +2,7 @@
   'use strict';
   // Fixed-geometry diagram renderer; routing uses explicit anchors and control points.
   // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
+  // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
   // Bright fills keep black labels legible; assign colors consistently by concept.
   const fills = {
@@ -21,6 +22,72 @@
     warn: { fill: '#f5a524', glyph: '?', ink: '#1a1a1a', dy: -0.3 }
   };
   const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
+
+  // 主节点外形：rect（默认，圆角由 r 控制）、pill（胶囊，两端半圆）、diamond（菱形，判断）、ellipse（椭圆，起止）。
+  // 只有 rect 使用 r；其余形状的边界按解析几何求，锚点、角标与文字可用区域都以形状边界为准。
+  const shapeOf = shape => shape.shape || 'rect';
+  const centerOf = shape => ({ x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 });
+  // 胶囊的脊线：横放时是水平线段，竖放时是垂直线段；形状 = 脊线 ⊕ 半径 R 的圆
+  const spineOf = shape => shape.w >= shape.h
+    ? { x1: shape.x + shape.h / 2, y1: shape.y + shape.h / 2, x2: shape.x + shape.w - shape.h / 2, y2: shape.y + shape.h / 2, r: shape.h / 2 }
+    : { x1: shape.x + shape.w / 2, y1: shape.y + shape.w / 2, x2: shape.x + shape.w / 2, y2: shape.y + shape.h - shape.w / 2, r: shape.w / 2 };
+  function insideShape(shape, point, inset = 0) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    const dx = point.x - c.x;
+    const dy = point.y - c.y;
+    if (kind === 'pill') {
+      const spine = spineOf(shape);
+      const u = Math.max(spine.x1, Math.min(point.x, spine.x2));
+      const v = Math.max(spine.y1, Math.min(point.y, spine.y2));
+      return Math.hypot(point.x - u, point.y - v) < spine.r - inset;
+    }
+    const half = { w: shape.w / 2 - inset, h: shape.h / 2 - inset };
+    if (half.w <= 0 || half.h <= 0) return false;
+    if (kind === 'diamond') return Math.abs(dx) / half.w + Math.abs(dy) / half.h <= 1;
+    if (kind === 'ellipse') return (dx / half.w) ** 2 + (dy / half.h) ** 2 <= 1;
+    return Math.abs(dx) < half.w && Math.abs(dy) < half.h;
+  }
+  // 把外接矩形上的目标点沿「中心→目标」方向推到形状边界：rect 的目标点本来就在边界上
+  function boundary(shape, target) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    const dx = target.x - c.x;
+    const dy = target.y - c.y;
+    if (kind === 'rect' || (!dx && !dy)) return { x: target.x, y: target.y };
+    if (kind === 'pill') {
+      let near = 0;
+      let far = 2;
+      while (insideShape(shape, { x: c.x + dx * far, y: c.y + dy * far }) && far < 64) far *= 2;
+      for (let step = 0; step < 24; step++) {
+        const middle = (near + far) / 2;
+        if (insideShape(shape, { x: c.x + dx * middle, y: c.y + dy * middle })) near = middle;
+        else far = middle;
+      }
+      return { x: c.x + dx * near, y: c.y + dy * near };
+    }
+    const scale = kind === 'diamond'
+      ? 1 / (Math.abs(dx) / (shape.w / 2) + Math.abs(dy) / (shape.h / 2))
+      : 1 / Math.hypot(dx / (shape.w / 2), dy / (shape.h / 2));
+    return { x: c.x + dx * scale, y: c.y + dy * scale };
+  }
+  // 角标落在形状内侧的右上方向，离边界约 15：rect 沿用原有的固定角落
+  function badgeCenter(shape) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    if (kind === 'diamond') return { x: c.x + shape.w * 0.15, y: c.y - shape.h * 0.15 };
+    if (kind === 'ellipse') {
+      const scale = Math.max(1 - 15 / Math.min(shape.w / 2, shape.h / 2), 0);
+      return { x: c.x + shape.w / 2 * 0.707 * scale, y: c.y - shape.h / 2 * 0.707 * scale };
+    }
+    if (kind === 'pill') {
+      const spine = spineOf(shape);
+      const offset = Math.max(spine.r - 15, 0) * 0.707;
+      const end = shape.w >= shape.h ? { x: spine.x2, y: spine.y1 } : { x: spine.x1, y: spine.y1 };
+      return { x: end.x + offset, y: end.y - offset };
+    }
+    return { x: shape.x + shape.w - 17, y: shape.y + 17 };
+  }
 
   function element(name, attributes = {}, parent) {
     const node = document.createElementNS(svgNS, name);
@@ -44,10 +111,10 @@
     if (!shape) throw new Error(`连线引用了不存在的框：${id}`);
     const ratio = ratioText === undefined ? 0.5 : Number(ratioText);
     const direction = sides[side];
-    const point = side === 'top' || side === 'bottom'
+    const target = side === 'top' || side === 'bottom'
       ? { x: shape.x + shape.w * ratio, y: side === 'top' ? shape.y : shape.y + shape.h }
       : { x: side === 'left' ? shape.x : shape.x + shape.w, y: shape.y + shape.h * ratio };
-    return { point, direction };
+    return { point: boundary(shape, target), direction };
   }
   function roundedPath(points, radius) {
     let d = `M ${points[0].x} ${points[0].y}`;
@@ -72,13 +139,12 @@
     const sign = counter ? -1 : 1;
     let span = (angleOf(to) - start) * sign;
     while (span <= 0) span += Math.PI * 2;
-    const inside = (point, box, margin) => point.x > box.x - margin && point.x < box.x + box.w + margin && point.y > box.y - margin && point.y < box.y + box.h + margin;
     const steps = Math.ceil(span / (Math.PI / 720));
     const points = [];
     for (let index = 0; index <= steps; index++) {
       const angle = start + sign * span * index / steps;
       const point = { x: ring.cx + ring.rx * Math.cos(angle), y: ring.cy + ring.ry * Math.sin(angle) };
-      if (!inside(point, from, 0) && !inside(point, to, gap)) points.push(point);
+      if (!insideShape(from, point, 0) && !insideShape(to, point, gap)) points.push(point);
     }
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
@@ -156,9 +222,9 @@
 
     for (const group of slide.groups || []) {
       const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
-      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
+      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
       if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
-      if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+      if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
     }
     const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
     const boxLayer = element('g', { class: 'slide-boxes' }, svg);
@@ -167,12 +233,16 @@
     for (const box of slide.boxes || []) {
       const small = box.size === 'sm';
       const muted = box.status === 'muted';
-      const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, opacity: box.dim ? 0.4 : null }, boxLayer);
-      element('rect', {
-        x: box.x, y: box.y, width: box.w, height: box.h, rx: box.r ?? (small ? 6 : 20),
-        fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
+      const kind = shapeOf(box);
+      const center = centerOf(box);
+      const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, 'data-shape': kind, opacity: box.dim ? 0.4 : null }, boxLayer);
+      const paint = {
+        class: 'slide-shape', fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
         stroke: muted ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none', 'stroke-width': muted ? 1.5 : 3, 'stroke-dasharray': muted ? '6 5' : null
-      }, layer);
+      };
+      if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
+      else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
+      else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
       const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
@@ -180,10 +250,9 @@
       if (hasValue) text(layer, cx, cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
       const badge = badges[box.status];
       if (badge && !small) {
-        const bx = box.x + box.w - 17;
-        const by = box.y + 17;
-        element('circle', { cx: bx, cy: by, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
-        text(layer, bx, by + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
+        const at = badgeCenter(box);
+        element('circle', { cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
+        text(layer, at.x, at.y + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
       }
     }
     for (const arrow of slide.arrows || []) {

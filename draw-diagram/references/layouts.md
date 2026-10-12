@@ -78,4 +78,5 @@ For a true inner cycle with source-required nodes, use normal-size boxes and inc
 - Offset multiple connections on one side with anchor ratios such as `:0.3` and `:0.7`. Keep incoming connections away from the upper-right badge.
 - Place edge labels explicitly with `at`, outside curved routes or above straight routes. Label clearance and route length are measured by the checker; see troubleshooting for repairs.
 - Assign one color per recurring concept and keep it consistent across frames. Saturated fills emphasize main participants; Soft/Pale fills support context. Status remains an explicit field, not a color guess.
+- Choose `shape` by semantics, not decoration: `diamond` for a decision, `ellipse` for start/end, `pill` for a state tag, `rect` otherwise. A shape is not an emphasis device: mixed shapes in one frame must each mean something, and diamond/ellipse boxes need the room their inscribed text area requires (see [frame-format.md](frame-format.md)).
 - Across related frames, preserve participant positions where possible; make the changing relationship or status the visible difference.

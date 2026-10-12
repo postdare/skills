@@ -62,13 +62,41 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 
 ### Boxes
 
-`{id,x,y,w,h,label,fill?,value?,status?,dim?,size?,r?}`
+`{id,x,y,w,h,label,fill?,value?,status?,dim?,size?,r?,shape?}`
 
-- `x/y` locate the top-left corner; `w/h` are positive dimensions. `r` overrides corner radius.
+- `x/y` locate the top-left corner of the bounding box; `w/h` are positive dimensions. `r` overrides the corner radius of a `rect`.
 - `fill` is a named `Diagram.fills` color or a CSS color. Named families are `mint`, `pink`, `violet`, `sky`, `amber`, each with `Soft` and `Pale` variants, plus `gray`. Omitted fill uses mint.
 - `label` supports `\n`; `value` adds a smaller second line. Numeric zero renders. Keep line wrapping intentional.
 - `error`, `ok` and `warn` add a badge; `muted` adds gray fill and dashed outline. `dim: true` reduces opacity independently.
 - `size: "sm"` is for an illustration only: smaller text/corners, no value or badge. It is exempt from semantic node comparison and cannot satisfy a required content node.
+
+### Shapes
+
+`shape` selects the node outline. It defaults to `rect`, applies to boxes only (groups are always rectangles), also works for `size: "sm"` illustrations, and does not change semantic comparison.
+
+| `shape` | Outline | Common use | Notes |
+| --- | --- | --- | --- |
+| `rect` | Rounded rectangle | Ordinary step, participant or container member | `r` sets the corner radius |
+| `pill` | Stadium (fully rounded ends) | Terminal/state tag such as `上线` | `r` ignored; ends use half the shorter side |
+| `diamond` | Rhombus | Decision with two or more branches | `r` ignored; four sharp vertices |
+| `ellipse` | Ellipse | Start/end terminator | `r` ignored |
+
+Shape changes the outline, the usable text area, the anchor points and the badge position, while `x/y/w/h` stay the bounding box every other computation uses:
+
+- **Anchors**: `id@side:ratio` still addresses the bounding box; the rendered endpoint is pushed to the outline along the direction from the box center, so ratios keep their meaning. On a diamond `@top`, `@right`, `@bottom`, `@left` land exactly on the four vertices; on an ellipse they land on the four axis ends; on a pill `@left`/`@right` land on the cap extremes. `orbit` clips on the outline as well.
+- **Badges**: `error/ok/warn` badges keep the fixed top-right inset on a `rect`; on `pill`, `diamond` and `ellipse` they move inside the outline along the up-right direction and must clear the boundary by at least their radius (11). A flat or tiny shape cannot carry a badge.
+- **Labels**: the checker requires the text bounding box to clear the outline. `rect` and `pill` keep the rectangular rule (6 left/right, 2 top/bottom). `diamond` and `ellipse` require every corner of the text box to be at least 4 units from the outline, i.e. the text must fit inside the inscribed rhombus or ellipse, not the bounding box.
+
+Budget the box from the label instead of reusing rectangle sizes:
+
+| `shape` | Fits a label of `tw`×`th` when | 100×24 label (≈5 CJK characters) |
+| --- | --- | --- |
+| `rect` | `w ≥ tw + 12`, `h ≥ th + 4` | 130×70 |
+| `pill` | same as `rect`, plus half the shorter side for the rounded ends | 130×70 |
+| `diamond` | `(tw/2 + 4)/(w/2) + (th/2 + 4)/(h/2) ≤ 1` | 220×130 (0.74) |
+| `ellipse` | each text corner at least 4 inside the outline | 220×130 (comfortable) |
+
+Equal bounding boxes therefore are not interchangeable: a diamond needs roughly the same width plus more height than a rectangle, and wide flat shapes waste the corners. Prefer few shapes per frame; mixing all four in one frame usually needs a wider canvas (`demo/diagrams.json` frame `shape-vocabulary` uses 820×450).
 
 ### Groups
 

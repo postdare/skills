@@ -32,6 +32,7 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
   'use strict';
   // Fixed-geometry diagram renderer; routing uses explicit anchors and control points.
   // 连线写法：from/to 为「框id@边[:位置0~1]」，shape 为 arc（弧线连接）、elbow（直角折线）或 line（直线）。
+  // 节点写法：box.shape 为 rect（默认）、pill、diamond 或 ellipse；锚点与角标按该形状的边界计算。
   const svgNS = 'http://www.w3.org/2000/svg';
   // Bright fills keep black labels legible; assign colors consistently by concept.
   const fills = {
@@ -51,6 +52,72 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     warn: { fill: '#f5a524', glyph: '?', ink: '#1a1a1a', dy: -0.3 }
   };
   const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
+
+  // 主节点外形：rect（默认，圆角由 r 控制）、pill（胶囊，两端半圆）、diamond（菱形，判断）、ellipse（椭圆，起止）。
+  // 只有 rect 使用 r；其余形状的边界按解析几何求，锚点、角标与文字可用区域都以形状边界为准。
+  const shapeOf = shape => shape.shape || 'rect';
+  const centerOf = shape => ({ x: shape.x + shape.w / 2, y: shape.y + shape.h / 2 });
+  // 胶囊的脊线：横放时是水平线段，竖放时是垂直线段；形状 = 脊线 ⊕ 半径 R 的圆
+  const spineOf = shape => shape.w >= shape.h
+    ? { x1: shape.x + shape.h / 2, y1: shape.y + shape.h / 2, x2: shape.x + shape.w - shape.h / 2, y2: shape.y + shape.h / 2, r: shape.h / 2 }
+    : { x1: shape.x + shape.w / 2, y1: shape.y + shape.w / 2, x2: shape.x + shape.w / 2, y2: shape.y + shape.h - shape.w / 2, r: shape.w / 2 };
+  function insideShape(shape, point, inset = 0) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    const dx = point.x - c.x;
+    const dy = point.y - c.y;
+    if (kind === 'pill') {
+      const spine = spineOf(shape);
+      const u = Math.max(spine.x1, Math.min(point.x, spine.x2));
+      const v = Math.max(spine.y1, Math.min(point.y, spine.y2));
+      return Math.hypot(point.x - u, point.y - v) < spine.r - inset;
+    }
+    const half = { w: shape.w / 2 - inset, h: shape.h / 2 - inset };
+    if (half.w <= 0 || half.h <= 0) return false;
+    if (kind === 'diamond') return Math.abs(dx) / half.w + Math.abs(dy) / half.h <= 1;
+    if (kind === 'ellipse') return (dx / half.w) ** 2 + (dy / half.h) ** 2 <= 1;
+    return Math.abs(dx) < half.w && Math.abs(dy) < half.h;
+  }
+  // 把外接矩形上的目标点沿「中心→目标」方向推到形状边界：rect 的目标点本来就在边界上
+  function boundary(shape, target) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    const dx = target.x - c.x;
+    const dy = target.y - c.y;
+    if (kind === 'rect' || (!dx && !dy)) return { x: target.x, y: target.y };
+    if (kind === 'pill') {
+      let near = 0;
+      let far = 2;
+      while (insideShape(shape, { x: c.x + dx * far, y: c.y + dy * far }) && far < 64) far *= 2;
+      for (let step = 0; step < 24; step++) {
+        const middle = (near + far) / 2;
+        if (insideShape(shape, { x: c.x + dx * middle, y: c.y + dy * middle })) near = middle;
+        else far = middle;
+      }
+      return { x: c.x + dx * near, y: c.y + dy * near };
+    }
+    const scale = kind === 'diamond'
+      ? 1 / (Math.abs(dx) / (shape.w / 2) + Math.abs(dy) / (shape.h / 2))
+      : 1 / Math.hypot(dx / (shape.w / 2), dy / (shape.h / 2));
+    return { x: c.x + dx * scale, y: c.y + dy * scale };
+  }
+  // 角标落在形状内侧的右上方向，离边界约 15：rect 沿用原有的固定角落
+  function badgeCenter(shape) {
+    const kind = shapeOf(shape);
+    const c = centerOf(shape);
+    if (kind === 'diamond') return { x: c.x + shape.w * 0.15, y: c.y - shape.h * 0.15 };
+    if (kind === 'ellipse') {
+      const scale = Math.max(1 - 15 / Math.min(shape.w / 2, shape.h / 2), 0);
+      return { x: c.x + shape.w / 2 * 0.707 * scale, y: c.y - shape.h / 2 * 0.707 * scale };
+    }
+    if (kind === 'pill') {
+      const spine = spineOf(shape);
+      const offset = Math.max(spine.r - 15, 0) * 0.707;
+      const end = shape.w >= shape.h ? { x: spine.x2, y: spine.y1 } : { x: spine.x1, y: spine.y1 };
+      return { x: end.x + offset, y: end.y - offset };
+    }
+    return { x: shape.x + shape.w - 17, y: shape.y + 17 };
+  }
 
   function element(name, attributes = {}, parent) {
     const node = document.createElementNS(svgNS, name);
@@ -74,10 +141,10 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     if (!shape) throw new Error(`连线引用了不存在的框：${id}`);
     const ratio = ratioText === undefined ? 0.5 : Number(ratioText);
     const direction = sides[side];
-    const point = side === 'top' || side === 'bottom'
+    const target = side === 'top' || side === 'bottom'
       ? { x: shape.x + shape.w * ratio, y: side === 'top' ? shape.y : shape.y + shape.h }
       : { x: side === 'left' ? shape.x : shape.x + shape.w, y: shape.y + shape.h * ratio };
-    return { point, direction };
+    return { point: boundary(shape, target), direction };
   }
   function roundedPath(points, radius) {
     let d = `M ${points[0].x} ${points[0].y}`;
@@ -102,13 +169,12 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     const sign = counter ? -1 : 1;
     let span = (angleOf(to) - start) * sign;
     while (span <= 0) span += Math.PI * 2;
-    const inside = (point, box, margin) => point.x > box.x - margin && point.x < box.x + box.w + margin && point.y > box.y - margin && point.y < box.y + box.h + margin;
     const steps = Math.ceil(span / (Math.PI / 720));
     const points = [];
     for (let index = 0; index <= steps; index++) {
       const angle = start + sign * span * index / steps;
       const point = { x: ring.cx + ring.rx * Math.cos(angle), y: ring.cy + ring.ry * Math.sin(angle) };
-      if (!inside(point, from, 0) && !inside(point, to, gap)) points.push(point);
+      if (!insideShape(from, point, 0) && !insideShape(to, point, gap)) points.push(point);
     }
     return `M ${points.filter((point, index) => index % 4 === 0 || index === points.length - 1).map(point => `${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' L ')}`;
   }
@@ -186,9 +252,9 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
 
     for (const group of slide.groups || []) {
       const layer = element('g', { class: 'slide-group', 'data-id': group.id, opacity: group.dim ? 0.4 : null }, svg);
-      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
+      element('rect', { x: group.x, y: group.y, width: group.w, height: group.h, rx: group.r ?? 22, class: 'slide-shape', fill: '#fff', stroke: group.status === 'error' ? '#e5484d' : '#1b1b1b', 'stroke-width': 1.5 }, layer);
       if (group.title) text(layer, group.x + group.w / 2, group.y + (group.titleY ?? 26), group.title, { class: 'slide-group-title' });
-      if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
+      if (group.card) element('rect', { x: group.card.x, y: group.card.y, width: group.card.w, height: group.card.h, rx: 10, class: 'slide-card', fill: '#fff', filter: `url(#${prefix}-shadow)` }, layer);
     }
     const arrowLayer = element('g', { class: 'slide-arrows' }, svg);
     const boxLayer = element('g', { class: 'slide-boxes' }, svg);
@@ -197,12 +263,16 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     for (const box of slide.boxes || []) {
       const small = box.size === 'sm';
       const muted = box.status === 'muted';
-      const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, opacity: box.dim ? 0.4 : null }, boxLayer);
-      element('rect', {
-        x: box.x, y: box.y, width: box.w, height: box.h, rx: box.r ?? (small ? 6 : 20),
-        fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
+      const kind = shapeOf(box);
+      const center = centerOf(box);
+      const layer = element('g', { class: `slide-box${small ? ' slide-box--sm' : ''}`, 'data-id': box.id, 'data-shape': kind, opacity: box.dim ? 0.4 : null }, boxLayer);
+      const paint = {
+        class: 'slide-shape', fill: muted ? fills.gray : fills[box.fill] || box.fill || fills.mint,
         stroke: muted ? '#9aa3ad' : box.status === 'error' ? '#e5484d' : 'none', 'stroke-width': muted ? 1.5 : 3, 'stroke-dasharray': muted ? '6 5' : null
-      }, layer);
+      };
+      if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
+      else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
+      else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
       const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
@@ -210,10 +280,9 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
       if (hasValue) text(layer, cx, cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
       const badge = badges[box.status];
       if (badge && !small) {
-        const bx = box.x + box.w - 17;
-        const by = box.y + 17;
-        element('circle', { cx: bx, cy: by, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
-        text(layer, bx, by + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
+        const at = badgeCenter(box);
+        element('circle', { cx: at.x, cy: at.y, r: 11, fill: badge.fill, stroke: '#fff', 'stroke-width': 2 }, layer);
+        text(layer, at.x, at.y + badge.dy, badge.glyph, { class: 'slide-badge', fill: badge.ink });
       }
     }
     for (const arrow of slide.arrows || []) {
@@ -259,22 +328,99 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
     const box = element.getBBox();
     return { left: box.x, top: box.y, right: box.x + box.width, bottom: box.y + box.height };
   };
-  const rectAttr = rect => {
-    const x = Number(rect.getAttribute('x'));
-    const y = Number(rect.getAttribute('y'));
-    return { left: x, top: y, right: x + Number(rect.getAttribute('width')), bottom: y + Number(rect.getAttribute('height')) };
-  };
   const overlaps = (a, b, pad = 0) => a.left + pad < b.right && b.left + pad < a.right && a.top + pad < b.bottom && b.top + pad < a.bottom;
   const contains = (r, p, inset = 0) => p.x > r.left + inset && p.x < r.right - inset && p.y > r.top + inset && p.y < r.bottom - inset;
   const idOf = reference => reference.split('@')[0];
+
+  // 形状几何：一律用外接矩形 frame 表示；rect/pill 之外按解析式判断内缩、边界距离与外轮廓。
+  // 渲染端 assets/diagram.js 用同一套规则决定锚点与角标，改一处必须同步另一处。
+  const halfOf = frame => ({ w: (frame.right - frame.left) / 2, h: (frame.bottom - frame.top) / 2 });
+  const centerOf = frame => ({ x: (frame.left + frame.right) / 2, y: (frame.top + frame.bottom) / 2 });
+  const spineOf = frame => {
+    const half = halfOf(frame);
+    const center = centerOf(frame);
+    const r = Math.min(half.w, half.h);
+    return half.w >= half.h
+      ? { x1: frame.left + r, y1: center.y, x2: frame.right - r, y2: center.y, r }
+      : { x1: center.x, y1: frame.top + r, x2: center.x, y2: frame.bottom - r, r };
+  };
+  // 点到边界的有符号距离（正数表示在内侧）：rect/pill/diamond 精确，ellipse 用一阶近似
+  const clearance = (shape, frame, p) => {
+    const half = halfOf(frame);
+    const center = centerOf(frame);
+    const dx = p.x - center.x;
+    const dy = p.y - center.y;
+    if (!half.w || !half.h) return -Infinity;
+    if (shape === 'diamond') return (1 - (Math.abs(dx) / half.w + Math.abs(dy) / half.h)) / Math.hypot(1 / half.w, 1 / half.h);
+    if (shape === 'ellipse') {
+      const radial = Math.hypot(dx / half.w, dy / half.h);
+      const gradient = Math.hypot(dx / half.w ** 2, dy / half.h ** 2);
+      return gradient ? (1 - radial) * radial / gradient : Math.min(half.w, half.h);
+    }
+    if (shape === 'pill') {
+      const spine = spineOf(frame);
+      const u = Math.max(spine.x1, Math.min(p.x, spine.x2));
+      const v = Math.max(spine.y1, Math.min(p.y, spine.y2));
+      return spine.r - Math.hypot(p.x - u, p.y - v);
+    }
+    return Math.min(p.x - frame.left, frame.right - p.x, p.y - frame.top, frame.bottom - p.y);
+  };
+  const insideShape = (shape, frame, p, inset = 0) => shape === 'rect'
+    ? contains(frame, p, inset)
+    : clearance(shape, frame, p) > inset;
+  // 凸多边形采样：形状之间、标签与形状之间按真实轮廓求交，而不是外接矩形
+  const outline = (shape, frame) => {
+    const half = halfOf(frame);
+    const center = centerOf(frame);
+    if (shape === 'ellipse') return Array.from({ length: 32 }, (_, index) => {
+      const angle = index / 32 * Math.PI * 2;
+      return { x: center.x + half.w * Math.cos(angle), y: center.y + half.h * Math.sin(angle) };
+    });
+    if (shape === 'diamond') return [{ x: center.x, y: frame.top }, { x: frame.right, y: center.y }, { x: center.x, y: frame.bottom }, { x: frame.left, y: center.y }];
+    if (shape === 'pill') {
+      const spine = spineOf(frame);
+      const caps = spine.y1 === spine.y2
+        ? [[spine.x2, spine.y1, -Math.PI / 2], [spine.x1, spine.y2, Math.PI / 2]]
+        : [[spine.x1, spine.y2, 0], [spine.x2, spine.y1, Math.PI]];
+      const points = [];
+      for (const [cx, cy, start] of caps) for (let index = 0; index <= 8; index++) {
+        const angle = start + Math.PI * index / 8;
+        points.push({ x: cx + spine.r * Math.cos(angle), y: cy + spine.r * Math.sin(angle) });
+      }
+      return points;
+    }
+    return [{ x: frame.left, y: frame.top }, { x: frame.right, y: frame.top }, { x: frame.right, y: frame.bottom }, { x: frame.left, y: frame.bottom }];
+  };
+  // 凸多边形分离轴判定：矩形之间与旧的矩形重叠判定一致，菱形/椭圆的空角不再算作相交
+  const convexOverlap = (a, b) => {
+    const separated = (polygon, other) => {
+      for (let index = 0; index < polygon.length; index++) {
+        const from = polygon[index];
+        const to = polygon[(index + 1) % polygon.length];
+        const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+        const axis = { x: -(to.y - from.y) / length, y: (to.x - from.x) / length };
+        const project = points => points.map(point => point.x * axis.x + point.y * axis.y);
+        const one = project(polygon);
+        const two = project(other);
+        if (Math.min(...one) > Math.max(...two) + 1e-6 || Math.min(...two) > Math.max(...one) + 1e-6) return true;
+      }
+      return false;
+    };
+    return !separated(a, b) && !separated(b, a);
+  };
+  const textCorners = r => [{ x: r.left, y: r.top }, { x: r.right, y: r.top }, { x: r.right, y: r.bottom }, { x: r.left, y: r.bottom }];
 
   function geometry(svg, slide) {
     const errors = [];
     const hints = [];
     const width = slide.w || 720;
     const height = slide.h || 450;
-    const boxes = [...svg.querySelectorAll('.slide-box')].map(g => ({ id: g.dataset.id, rect: rectAttr(g.querySelector('rect')), texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('circle'), badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm') }));
-    const groups = [...svg.querySelectorAll('.slide-group')].map(g => ({ id: g.dataset.id, rect: rectAttr(g.querySelector('rect')), title: g.querySelector('.slide-group-title'), card: g.querySelectorAll('rect')[1] }));
+    const boxes = [...svg.querySelectorAll('.slide-box')].map(g => ({
+      id: g.dataset.id, shape: g.dataset.shape || 'rect', frame: rectOf(g.querySelector('.slide-shape')),
+      texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('circle'),
+      badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm')
+    }));
+    const groups = [...svg.querySelectorAll('.slide-group')].map(g => ({ id: g.dataset.id, frame: rectOf(g.querySelector('.slide-shape')), title: g.querySelector('.slide-group-title'), card: g.querySelector('.slide-card') }));
     const paths = [...svg.querySelectorAll('.slide-arrow')];
     const labels = [...svg.querySelectorAll('.slide-arrow-label')].map(element => ({ text: element.textContent, rect: rectOf(element) }));
     const samples = paths.map(path => {
@@ -287,10 +433,21 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
       const badge = box.badge && rectOf(box.badge);
       for (const text of box.texts) {
         const r = rectOf(text);
-        if (r.left < box.rect.left + 6 || r.right > box.rect.right - 6 || r.top < box.rect.top + 2 || r.bottom > box.rect.bottom - 2) errors.push(`文字溢出：${box.id}「${text.textContent}」`);
+        // rect/pill 沿用矩形规则（左右 6、上下 2）；diamond/ellipse 按文字外框四角到形状边界的距离判定，
+        // 不能只看外接矩形——菱形的四个空角会让「看起来放得下」的文字压到边上。
+        const overflow = box.shape === 'rect' || box.shape === 'pill'
+          ? r.left < box.frame.left + 6 || r.right > box.frame.right - 6 || r.top < box.frame.top + 2 || r.bottom > box.frame.bottom - 2
+          : textCorners(r).some(corner => clearance(box.shape, box.frame, corner) < 4);
+        if (overflow) errors.push(`文字溢出：${box.id}「${text.textContent}」${box.shape === 'rect' || box.shape === 'pill' ? '' : `——${box.shape} 的可用区域是内接形状，四角到边界需 ≥ 4px，加宽/加高框或缩小字号`}`);
         if (badge && overlaps(r, badge, -2)) errors.push(`角标压字：${box.id}「${text.textContent}」，框宽至少加到 字宽 + 70`);
       }
-      if (!inCanvas(box.rect)) errors.push(`越界：${box.id}`);
+      // 角标必须完全落在形状内侧，菱形/椭圆的右上角是空的，位置由渲染端按形状给
+      if (box.badge) {
+        const radius = Number(box.badge.getAttribute('r'));
+        const gap = clearance(box.shape, box.frame, { x: Number(box.badge.getAttribute('cx')), y: Number(box.badge.getAttribute('cy')) });
+        if (gap < radius) errors.push(`角标出框：${box.id} 角标圆心离形状边界 ${gap.toFixed(1)}px，需 ≥ ${radius}px（加大框或改小角标）`);
+      }
+      if (!inCanvas(box.frame)) errors.push(`越界：${box.id}`);
     }
     // 角标字形光学居中：`.slide text` 的 dominant-baseline: central 对齐的是 em 盒中心，而字形墨迹在 em 盒里并不居中，
     // assets/diagram.js 的 badges 表用 dy 补偿。这里按 .slide-badge 的实际字体量出墨迹相对 em 中心的下偏量，和 dy 对差；
@@ -307,13 +464,13 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
       if (Math.abs(offset) > 1) errors.push(`角标未居中：${box.id}「${box.badgeText.textContent}」墨迹中心离圆心 ${offset.toFixed(2)}px（改 assets/diagram.js 的 badges.dy）`);
     }
     for (let a = 0; a < boxes.length; a++) for (let b = a + 1; b < boxes.length; b++) {
-      if (overlaps(boxes[a].rect, boxes[b].rect)) errors.push(`框重叠：${boxes[a].id} / ${boxes[b].id}`);
+      if (convexOverlap(outline(boxes[a].shape, boxes[a].frame), outline(boxes[b].shape, boxes[b].frame))) errors.push(`框重叠：${boxes[a].id} / ${boxes[b].id}`);
     }
     (slide.arrows || []).forEach((arrow, index) => {
       const { length, points } = samples[index];
       const ends = new Set([idOf(arrow.from), idOf(arrow.to)]);
       const name = `${idOf(arrow.from)}→${idOf(arrow.to)}`;
-      for (const box of boxes) if (!ends.has(box.id) && points.some(p => contains(box.rect, p, 2))) errors.push(`穿框：${name} 穿过 ${box.id}`);
+      for (const box of boxes) if (!ends.has(box.id) && points.some(p => insideShape(box.shape, box.frame, p, 2))) errors.push(`穿框：${name} 穿过 ${box.id}`);
       if (length < (arrow.size === 'sm' ? 12 : 28)) errors.push(`短边：${name} 仅 ${Math.round(length)}px`);
       // 斜线：直线几乎横平竖直却差了几度，多半是两端框没对齐
       if (arrow.shape === 'line') {
@@ -339,7 +496,7 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
       const owner = owners[k];
       const name = owner === undefined ? '' : `${idOf(slide.arrows[owner].from)}→${idOf(slide.arrows[owner].to)}`;
       const halo = { left: label.rect.left - 3, top: label.rect.top - 3, right: label.rect.right + 3, bottom: label.rect.bottom + 3 };
-      for (const box of boxes) if (overlaps(label.rect, box.rect, 1)) errors.push(`标签压框：「${label.text}」压 ${box.id}`);
+      for (const box of boxes) if (convexOverlap(outline('rect', { left: label.rect.left - 1, top: label.rect.top - 1, right: label.rect.right + 1, bottom: label.rect.bottom + 1 }), outline(box.shape, box.frame))) errors.push(`标签压框：「${label.text}」压 ${box.id}`);
       for (const group of groups) if (group.title && overlaps(label.rect, rectOf(group.title))) errors.push(`标签压标题：「${label.text}」`);
       samples.forEach(({ points }, index) => {
         if (points.some(p => contains(halo, p))) errors.push(`标签压线：「${label.text}」离 ${idOf(slide.arrows[index].from)}→${idOf(slide.arrows[index].to)} 不足 3px`);
@@ -356,11 +513,11 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
       if (overlaps(labels[a].rect, labels[b].rect)) errors.push(`标签互压：「${labels[a].text}」/「${labels[b].text}」`);
     }
     for (const group of groups) {
-      if (!inCanvas(group.rect)) errors.push(`越界：容器 ${group.id}`);
+      if (!inCanvas(group.frame)) errors.push(`越界：容器 ${group.id}`);
       if (!group.title) continue;
       const title = rectOf(group.title);
-      for (const box of boxes) if (overlaps(title, box.rect)) errors.push(`标题被挡：容器 ${group.id} 的标题压 ${box.id}`);
-      if (group.card && overlaps(title, rectAttr(group.card))) errors.push(`标题被挡：容器 ${group.id} 的标题压卡片`);
+      for (const box of boxes) if (overlaps(title, box.frame)) errors.push(`标题被挡：容器 ${group.id} 的标题压 ${box.id}`);
+      if (group.card && overlaps(title, rectOf(group.card))) errors.push(`标题被挡：容器 ${group.id} 的标题压卡片`);
     }
     return { errors, hints };
   }
@@ -428,7 +585,7 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
 })();
 </script></head>
 <body><main><h1>交付与运营 · 通用图解 Demo</h1><p id="preview-summary">Rendering…</p><div id="preview"></div></main>
-<script>const documentData = {"title": "交付与运营 · 通用图解 Demo", "frames": [{"id": "release-flow", "title": "发布流水线", "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。", "content": {"nodes": [{"id": "commit", "label": "代码提交"}, {"id": "build", "label": "自动构建"}, {"id": "accept", "label": "变更验收"}, {"id": "release", "label": "灰度上线"}], "edges": [{"from": "commit", "to": "build", "label": "触发"}, {"from": "build", "to": "accept"}, {"from": "accept", "to": "release"}]}, "diagram": {"boxes": [{"id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交"}, {"id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建"}, {"id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收"}, {"id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线"}], "arrows": [{"from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206]}, {"from": "build@right", "to": "accept@left", "shape": "line"}, {"from": "accept@right", "to": "release@left", "shape": "line"}]}}, {"id": "recovery-loop", "title": "异常恢复闭环", "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。", "content": {"nodes": [{"id": "detect", "label": "监测信号", "status": "warn"}, {"id": "locate", "label": "定位原因", "status": "error"}, {"id": "repair", "label": "执行修复", "status": "ok"}, {"id": "verify", "label": "复核结果", "status": "ok"}], "edges": [{"from": "detect", "to": "locate", "label": "告警"}, {"from": "locate", "to": "repair"}, {"from": "repair", "to": "verify"}, {"from": "verify", "to": "detect", "label": "持续监测"}]}, "diagram": {"boxes": [{"id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn"}, {"id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error"}, {"id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok"}, {"id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok"}], "arrows": [{"from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100]}, {"from": "locate@bottom", "to": "repair@right", "shape": "arc"}, {"from": "repair@left", "to": "verify@bottom", "shape": "arc"}, {"from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104]}]}}, {"id": "service-boundaries", "title": "订单与仓储边界", "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。", "content": {"nodes": [{"id": "platform", "label": "交易平台"}, {"id": "orders", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}, {"id": "accepted", "label": "接收订单"}, {"id": "confirmed", "label": "确认完成"}, {"id": "reserved", "label": "预留库存"}, {"id": "shipped", "label": "安排发货"}], "edges": [{"from": "accepted", "to": "reserved", "label": "预留"}, {"from": "shipped", "to": "confirmed", "label": "确认"}]}, "diagram": {"w": 960, "h": 540, "groups": [{"id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22}, {"id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22}, {"id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22}], "boxes": [{"id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单"}, {"id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成"}, {"id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存"}, {"id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货"}], "arrows": [{"from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198]}, {"from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358]}]}}]};
+<script>const documentData = {"title": "交付与运营 · 通用图解 Demo", "frames": [{"id": "release-flow", "title": "发布流水线", "note": "横向链：四个阶段按顺序执行，第一条关系明确标注触发。来源：demo/brief.md。", "content": {"nodes": [{"id": "commit", "label": "代码提交"}, {"id": "build", "label": "自动构建"}, {"id": "accept", "label": "变更验收"}, {"id": "release", "label": "灰度上线"}], "edges": [{"from": "commit", "to": "build", "label": "触发"}, {"from": "build", "to": "accept"}, {"from": "accept", "to": "release"}]}, "diagram": {"boxes": [{"id": "commit", "x": 14, "y": 190, "w": 124, "h": 70, "fill": "sky", "label": "代码提交"}, {"id": "build", "x": 203, "y": 190, "w": 124, "h": 70, "fill": "mint", "label": "自动构建"}, {"id": "accept", "x": 392, "y": 190, "w": 124, "h": 70, "fill": "amber", "label": "变更验收"}, {"id": "release", "x": 581, "y": 190, "w": 124, "h": 70, "fill": "pink", "label": "灰度上线"}], "arrows": [{"from": "commit@right", "to": "build@left", "shape": "line", "label": "触发", "at": [170, 206]}, {"from": "build@right", "to": "accept@left", "shape": "line"}, {"from": "accept@right", "to": "release@left", "shape": "line"}]}}, {"id": "recovery-loop", "title": "异常恢复闭环", "note": "四节点环：按监测、定位、修复、复核顺时针推进，用角标表达各阶段结果。来源：demo/brief.md。", "content": {"nodes": [{"id": "detect", "label": "监测信号", "status": "warn"}, {"id": "locate", "label": "定位原因", "status": "error"}, {"id": "repair", "label": "执行修复", "status": "ok"}, {"id": "verify", "label": "复核结果", "status": "ok"}], "edges": [{"from": "detect", "to": "locate", "label": "告警"}, {"from": "locate", "to": "repair"}, {"from": "repair", "to": "verify"}, {"from": "verify", "to": "detect", "label": "持续监测"}]}, "diagram": {"boxes": [{"id": "detect", "x": 280, "y": 24, "w": 160, "h": 70, "fill": "sky", "label": "监测信号", "status": "warn"}, {"id": "locate", "x": 520, "y": 190, "w": 160, "h": 70, "fill": "amber", "label": "定位原因", "status": "error"}, {"id": "repair", "x": 280, "y": 356, "w": 160, "h": 70, "fill": "pink", "label": "执行修复", "status": "ok"}, {"id": "verify", "x": 40, "y": 190, "w": 160, "h": 70, "fill": "mint", "label": "复核结果", "status": "ok"}], "arrows": [{"from": "detect@right", "to": "locate@top", "shape": "arc", "label": "告警", "at": [604, 100]}, {"from": "locate@bottom", "to": "repair@right", "shape": "arc"}, {"from": "repair@left", "to": "verify@bottom", "shape": "arc"}, {"from": "verify@top", "to": "detect@left", "shape": "arc", "label": "持续监测", "at": [96, 104]}]}}, {"id": "service-boundaries", "title": "订单与仓储边界", "note": "嵌套容器：平台包含两个服务，跨服务请求与确认方向分开；使用 960×540 画布。来源：demo/brief.md。", "content": {"nodes": [{"id": "platform", "label": "交易平台"}, {"id": "orders", "label": "订单服务"}, {"id": "warehouse", "label": "仓储服务"}, {"id": "accepted", "label": "接收订单"}, {"id": "confirmed", "label": "确认完成"}, {"id": "reserved", "label": "预留库存"}, {"id": "shipped", "label": "安排发货"}], "edges": [{"from": "accepted", "to": "reserved", "label": "预留"}, {"from": "shipped", "to": "confirmed", "label": "确认"}]}, "diagram": {"w": 960, "h": 540, "groups": [{"id": "platform", "x": 20, "y": 20, "w": 920, "h": 500, "title": "交易平台", "titleY": 22}, {"id": "orders", "x": 60, "y": 100, "w": 300, "h": 340, "title": "订单服务", "titleY": 22}, {"id": "warehouse", "x": 600, "y": 100, "w": 300, "h": 340, "title": "仓储服务", "titleY": 22}], "boxes": [{"id": "accepted", "x": 110, "y": 180, "w": 200, "h": 70, "fill": "mint", "label": "接收订单"}, {"id": "confirmed", "x": 110, "y": 340, "w": 200, "h": 70, "fill": "mintSoft", "label": "确认完成"}, {"id": "reserved", "x": 650, "y": 180, "w": 200, "h": 70, "fill": "pink", "label": "预留库存"}, {"id": "shipped", "x": 650, "y": 340, "w": 200, "h": 70, "fill": "pinkSoft", "label": "安排发货"}], "arrows": [{"from": "accepted@right", "to": "reserved@left", "shape": "line", "label": "预留", "at": [480, 198]}, {"from": "shipped@left", "to": "confirmed@right", "shape": "line", "label": "确认", "at": [480, 358]}]}}, {"id": "shape-vocabulary", "title": "审核分支：四种外形", "note": "四种外形各担一种语义：椭圆起止、矩形步骤、菱形判断、胶囊状态。菱形与胶囊需要更大的外接框，因此画布为 820×450。来源：demo/brief.md。", "content": {"nodes": [{"id": "start", "label": "开始"}, {"id": "submit", "label": "提交变更"}, {"id": "gate", "label": "审核通过？"}, {"id": "ship", "label": "上线", "status": "ok"}, {"id": "revise", "label": "修改", "status": "warn"}], "edges": [{"from": "start", "to": "submit"}, {"from": "submit", "to": "gate"}, {"from": "gate", "to": "ship", "label": "通过"}, {"from": "gate", "to": "revise", "label": "驳回"}]}, "diagram": {"w": 820, "h": 450, "boxes": [{"id": "start", "shape": "ellipse", "x": 20, "y": 190, "w": 140, "h": 70, "fill": "sky", "label": "开始"}, {"id": "submit", "x": 200, "y": 190, "w": 150, "h": 70, "fill": "mintSoft", "label": "提交变更"}, {"id": "gate", "shape": "diamond", "x": 390, "y": 160, "w": 220, "h": 130, "fill": "amber", "label": "审核通过？"}, {"id": "ship", "shape": "pill", "x": 680, "y": 193, "w": 120, "h": 64, "fill": "mint", "label": "上线", "status": "ok"}, {"id": "revise", "shape": "pill", "x": 680, "y": 305, "w": 120, "h": 64, "fill": "pink", "label": "修改", "status": "warn"}], "arrows": [{"from": "start@right", "to": "submit@left", "shape": "line"}, {"from": "submit@right", "to": "gate@left", "shape": "line"}, {"from": "gate@right", "to": "ship@left", "shape": "line", "label": "通过", "at": [643, 205]}, {"from": "gate@bottom", "to": "revise@left", "shape": "arc", "label": "驳回", "at": [555, 305]}]}}]};
 const diagramStyle = "/* Diagram styles: white canvas, bright fills, bold labels, solid directional arrows. */\n.slide { display: block; width: 100%; height: auto; background: #fff; font-family: \"PingFang SC\", -apple-system, BlinkMacSystemFont, \"Helvetica Neue\", \"Microsoft YaHei\", sans-serif; }\n.slide text { dominant-baseline: central; text-anchor: middle; }\n.slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }\n.slide-box--sm .slide-box-label { font-size: 9.5px; }\n.slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }\n.slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }\n.slide-badge { font-size: 13px; font-weight: 800; }\n.slide-group-title { font-size: 16px; font-weight: 700; fill: #111; }\n.slide-arrow { fill: none; stroke: #111; stroke-width: 3.5; stroke-linejoin: round; }\n.slide-arrow--sm { stroke-width: 1.6; }\n.slide-arrow--blocked { stroke: #e0245e; stroke-dasharray: 9 7; }\n.slide-arrow-label { font-size: 14px; font-weight: 600; fill: #111; paint-order: stroke; stroke: #fff; stroke-width: 6px; stroke-linejoin: round; }\n.slide-arrow-label--blocked { fill: #c41d4f; }\n.slide-note { font-size: 13px; font-weight: 500; fill: #5d6670; }\n.slide-note--warn { fill: #c41d4f; font-weight: 700; }\n";
 
 (async () => {

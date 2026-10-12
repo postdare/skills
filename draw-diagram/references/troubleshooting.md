@@ -7,8 +7,10 @@ Geometry diagnostics come from `assets/check.js`; renderer routes and badge comp
 | Diagnostic / symptom | Repair |
 | --- | --- |
 | Text overflow (`文字溢出`) | Widen the box or add a deliberate label line break. Preserve source wording. Move surrounding boxes to retain route space. |
-| Badge overlaps text (`角标压字`) | Add space on the badge side; a status badge requires more width than a plain box. |
-| Overlapping boxes (`框重叠`) | Move or resize boxes, including small illustration boxes. Groups are boundaries, not substitutes for spacing. |
+| Text overflow only on `diamond`/`ellipse` | The label must fit the inscribed rhombus/ellipse, not the bounding box: widen and heighten, or use `rect`. Widening alone rarely helps a diamond. |
+| Badge outside the outline (`角标出框`) | The shape is too flat or too small for its status badge. Enlarge it or move the status to a rectangle node. |
+| Badge overlaps text (`角标压字`) | Add space on the badge side; a status badge requires more width than a plain box. A pill carrying a badge needs roughly `2 × label width + half the shorter side`. |
+| Overlapping boxes (`框重叠`) | Move or resize boxes, including small illustration boxes. Comparison uses the real outlines, so diamond corners may already be visually clear while ellipses still touch. |
 | Out of bounds (`越界`) | Move the offending box, group, path or label inside the configured canvas. Increasing canvas dimensions requires another mobile review. |
 | Group title obscured (`标题被挡`) | Keep boxes below the title. For a compact group, `titleY: 17` and a card beginning at `y + 31` are a useful starting point. Nested groups use absolute coordinates. |
 | Bad measurements despite visible spacing | Attach the SVG, load the stylesheet and await fonts before geometry checking. Avoid hidden/display-none previews: text bounding boxes require a rendered SVG. |
