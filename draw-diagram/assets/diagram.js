@@ -73,6 +73,11 @@
   const spineOf = shape => shape.w >= shape.h
     ? { x1: shape.x + shape.h / 2, y1: shape.y + shape.h / 2, x2: shape.x + shape.w - shape.h / 2, y2: shape.y + shape.h / 2, r: shape.h / 2 }
     : { x1: shape.x + shape.w / 2, y1: shape.y + shape.w / 2, x2: shape.x + shape.w / 2, y2: shape.y + shape.h - shape.w / 2, r: shape.w / 2 };
+  // 梯形的凸四边形顶点：上边缘全宽，下边缘两侧各内缩 12%（漏斗层级形状）
+  const trapezoidOf = shape => [
+    { x: shape.x, y: shape.y }, { x: shape.x + shape.w, y: shape.y },
+    { x: shape.x + shape.w * 0.88, y: shape.y + shape.h }, { x: shape.x + shape.w * 0.12, y: shape.y + shape.h }
+  ];
   function insideShape(shape, point, inset = 0) {
     const kind = shapeOf(shape);
     const c = centerOf(shape);
@@ -83,6 +88,18 @@
       const u = Math.max(spine.x1, Math.min(point.x, spine.x2));
       const v = Math.max(spine.y1, Math.min(point.y, spine.y2));
       return Math.hypot(point.x - u, point.y - v) < spine.r - inset;
+    }
+    // 凸四边形逐边判定：点对每条有向边（顺时针）的叉积须同号，inset 换算成到边的垂直距离
+    if (kind === 'trapezoid') {
+      const vertices = trapezoidOf(shape);
+      for (let index = 0; index < 4; index++) {
+        const a = vertices[index];
+        const b = vertices[(index + 1) % 4];
+        const cross = (b.x - a.x) * (point.y - a.y) - (b.y - a.y) * (point.x - a.x);
+        const distance = -cross / Math.hypot(b.x - a.x, b.y - a.y);
+        if (distance < inset) return false;
+      }
+      return true;
     }
     const half = { w: shape.w / 2 - inset, h: shape.h / 2 - inset };
     if (half.w <= 0 || half.h <= 0) return false;
@@ -98,6 +115,23 @@
     const dx = target.x - c.x;
     const dy = target.y - c.y;
     if (kind === 'rect' || (!dx && !dy)) return { x: target.x, y: target.y };
+    // 梯形：中心→目标射线与四条边求交，取参数 t 最小的正向交点
+    if (kind === 'trapezoid') {
+      const vertices = trapezoidOf(shape);
+      let nearest = Infinity;
+      for (let index = 0; index < 4; index++) {
+        const a = vertices[index];
+        const b = vertices[(index + 1) % 4];
+        const ex = b.x - a.x;
+        const ey = b.y - a.y;
+        const denom = dx * ey - dy * ex;
+        if (!denom) continue;
+        const t = ((a.x - c.x) * ey - (a.y - c.y) * ex) / denom;
+        const u = ((a.x - c.x) * dy - (a.y - c.y) * dx) / denom;
+        if (t > 0 && u >= 0 && u <= 1 && t < nearest) nearest = t;
+      }
+      return nearest === Infinity ? { x: target.x, y: target.y } : { x: c.x + dx * nearest, y: c.y + dy * nearest };
+    }
     if (kind === 'pill') {
       let near = 0;
       let far = 2;
@@ -338,6 +372,7 @@
       }
       else if (kind === 'ellipse') element('ellipse', { cx: center.x, cy: center.y, rx: box.w / 2, ry: box.h / 2, ...paint }, layer);
       else if (kind === 'diamond') element('path', { d: `M ${center.x} ${box.y} L ${box.x + box.w} ${center.y} L ${center.x} ${box.y + box.h} L ${box.x} ${center.y} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
+      else if (kind === 'trapezoid') element('path', { d: `M ${box.x} ${box.y} L ${box.x + box.w} ${box.y} L ${box.x + box.w * 0.88} ${box.y + box.h} L ${box.x + box.w * 0.12} ${box.y + box.h} Z`, 'stroke-linejoin': 'round', ...paint }, layer);
       else element('rect', { x: box.x, y: box.y, width: box.w, height: box.h, rx: kind === 'pill' ? Math.min(box.w, box.h) / 2 : box.r ?? (small ? 6 : 20), ...paint }, layer);
       const cx = box.x + box.w / 2;
       const cy = box.y + box.h / 2;
@@ -349,10 +384,23 @@
         for (const part of icon) element(part.d !== undefined ? 'path' : 'circle', part, g);
       }
       const hasValue = box.value !== undefined && box.value !== null && String(box.value) !== '' && !small;
+      // 类图分栏：fields/methods 存在时标签置顶（y+24 加粗沿用 slide-box-label），其下分隔线，
+      // fields 逐行左对齐（行距 20），再分隔线，再 methods 逐行；sm 示意框忽略分栏。
+      const sectioned = !small && !dot && ((box.fields && box.fields.length) || (box.methods && box.methods.length));
       if (!dot) {
-        const labelY = icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
+        const labelY = sectioned ? box.y + 24 : icon ? (hasValue ? cy + 6 : cy + 14) : (hasValue ? cy - 10 : cy);
         text(layer, cx, labelY, box.label, { class: `slide-box-label${muted ? ' is-muted' : ''}` });
-        if (hasValue) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
+        if (hasValue && !sectioned) text(layer, cx, icon ? cy + 24 : cy + 15, box.value, { class: `slide-box-value${muted ? ' is-muted' : ''}` });
+      }
+      if (sectioned) {
+        const divider = y => element('path', { class: 'slide-box-divider', d: `M ${box.x + 10} ${y} L ${box.x + box.w - 10} ${y}` }, layer);
+        const members = (list, top) => list.forEach((member, index) => text(layer, box.x + 12, top + index * 20, member, { class: 'slide-box-member' }));
+        const fields = box.fields || [];
+        const methods = box.methods || [];
+        divider(box.y + 38);
+        members(fields, box.y + 58);
+        if (fields.length && methods.length) divider(box.y + 58 + fields.length * 20 - 10);
+        members(methods, box.y + 58 + (fields.length ? fields.length * 20 : 0));
       }
       const badge = badges[box.status];
       if (badge && !small && !dot) {

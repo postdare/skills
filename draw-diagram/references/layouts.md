@@ -14,6 +14,8 @@ Choose a starting point by relationship shape, then replace IDs, labels, values 
 | `chainWrap` | Six-stage wrapped chain | A long process across two rows |
 | `pair` | Two participants with separate outbound/return curves | Client request and server response |
 | `lanes` | Three independent parallel relationships | Triage routes by severity |
+| `swimlane3` | One flow handed across three role lanes | Approval routed through submitter, reviewer, finance |
+| `funnel4` | Four shrinking stages in a vertical stack | Conversion from exposure to payment |
 
 For five or more cycle nodes, position centers on an ellipse and use `ring` + `orbit`; forcing all edges into four-corner arc routes produces hooks. All orbit arrows in one diagram share the same ring. For a second ring inside the first, use explicit arc controls or the small illustration pattern below.
 
@@ -94,6 +96,47 @@ Rules that keep a sequence frame readable:
 - **Self-messages** (`p@life:y1` → `p@life:y2`) loop to the right; leave ~50 of vertical room so the loop and its label clear their neighbours. A self-message that carries a label needs a wider loop — `bend: 70` — so the label fits inside it; the default 44 leaves no room and the label lands on the loop's vertical.
 - **Width:** four participants need roughly 940×400 and up; the default 720×450 canvas fits three comfortably.
 - Lifelines are decoration, never nodes: they carry no `content` entry, and the geometry checker ignores them (a message crossing a lifeline is not a defect).
+
+## Swimlane style: one flow across roles
+
+Use it when the same process is **executed by different roles or systems in turn** — approvals, escalations, handoffs. Start from `DIAGRAM_TEMPLATES.swimlane3` and replace its placeholders.
+
+- **A lane is a full-width group.** Tile the canvas with horizontal groups, one per role (three lanes of ~130 height fill an 820×450 canvas). The group `title` is the role name, stays at the left of the lane, and is a semantic node in `content.nodes`.
+- **Nodes are normal boxes inside their owner's lane**; a decision keeps the usual `diamond` sizing rules (see [frame-format.md](frame-format.md)).
+- **Crossing lane borders is the point.** Flow arrows run straight or elbow across group outlines into the next lane; a line crossing a lane boundary is expected, not a defect — like messages crossing lifelines. Align successive steps on one x where possible so cross-lane segments stay vertical.
+- Park branch labels just beside their own segment, inside the lane where the branch starts.
+
+## Layered stack: dependencies point down
+
+Use it when the relationship is **tiered architecture** — access, service and data tiers where upper layers call lower ones.
+
+- **A layer is a full-width group**; stack them vertically with small gaps, title at the top of each layer (every layer title is a semantic node).
+- **Align boxes on a grid inside each layer** (2–3 per layer); infrastructure boxes may carry an `icon` such as `database` (budget `h ≥ 80` for icon + label).
+- **One or two straight vertical lines** suffice for cross-layer calls: align caller and callee on the same x so the line drops straight across both group borders, top layer to bottom layer. Do not draw every pairwise dependency — pick the representative paths.
+
+## Quadrant matrix: two axes, no arrows
+
+Use it when items are **classified along two dimensions** — urgency/importance, impact/effort.
+
+- **Tile the canvas with 2×2 groups**, leaving a cross-shaped gap (~40 units) between them for the axes. Each quadrant title is a semantic node; member items are normal boxes (1–2 per quadrant); there are no arrows.
+- **Axis labels are `notes`** placed in the cross gap or the outer margin — e.g. `紧急 →` at the end of the horizontal strip, `重要 →` above the vertical strip. Notes are decoration and never enter `content`.
+- Fill color can rank the quadrants (hot to gray); position, not color, carries the classification.
+
+## Funnel: magnitude by decreasing width
+
+Use it when a population **shrinks through ordered stages** — conversion, screening. Start from `DIAGRAM_TEMPLATES.funnel4` and replace its placeholders.
+
+- **Each stage is a `shape: "trapezoid"` box**, stacked vertically and centred on one axis. The bottom edge insets 12% per side, so choose widths with `w(n+1) ≈ 0.76 × w(n)` — then each stage's bottom edge lands flush on the next stage's top edge and the stack reads as one continuous funnel.
+- **The stage `value` carries the magnitude** (e.g. `12000`); the label names the stage. Both go in `content.nodes`.
+- **Conversion rates are edge labels** on the short `line` arrows between stages (`@bottom` → `@top`), placed beside the segment with `at`, not on it.
+
+## Class boxes: fields and methods compartments
+
+Use it for **class structure** — types with attributes and operations plus their relations.
+
+- **A class is a `rect` box with `fields`/`methods` arrays.** The label renders bold at the top, then a divider, then field rows, another divider, then method rows; rows are left-aligned at 20-unit pitch. Budget box height as 24 (label) + 16 (divider) + 20 × rows; omitting both arrays renders exactly like a plain box.
+- **Repeat the same `fields`/`methods` arrays in `content.nodes`.** The semantic checker compares them element-wise with whitespace stripped; a difference — including declaring them on only one side — is an error.
+- **Relations reuse the existing vocabulary**: `kind: "many"` for 1:N with the crow's foot on the many side, `start: "compose"`/`"aggregate"` with the diamond on the whole side. Connect boxes edge-to-edge with straight `line` routes and align the compartment boxes on a shared centerline.
 
 ## Composition rules
 

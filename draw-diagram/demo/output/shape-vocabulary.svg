@@ -4,6 +4,9 @@
 .slide-box-label { font-size: 20px; font-weight: 700; fill: #111; }
 .slide-box--sm .slide-box-label { font-size: 9.5px; }
 .slide-box-value { font-size: 13px; font-weight: 500; fill: #1d2125; }
+/* 类图分栏：成员行左对齐小字，分隔线为压暗细线 */
+.slide text.slide-box-member { font-size: 13px; font-weight: 500; fill: #1d2125; text-anchor: start; }
+.slide-box-divider { stroke: #111; stroke-width: 1.2; opacity: .25; }
 .slide-box-label.is-muted, .slide-box-value.is-muted { fill: #5d6670; }
 /* 节点图标：与文字同墨色的线条图标，位于框顶，不占语义 */
 .slide-icon { fill: none; stroke: #111; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

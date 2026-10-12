@@ -176,5 +176,36 @@ window.DIAGRAM_TEMPLATES = {
       { from: 'p3@life:240', to: 'p1@life:240', label: '消息三', at: [358, 224] },
       { from: 'p2@life:290', to: 'p2@life:340', bend: 70, label: '自处理', at: [305, 315] }
     ]
+  },
+  // 泳道 · 三条：全宽 group 横铺满画布，流程跨道上下走
+  swimlane3: {
+    groups: [
+      { id: 'lane1', x: 14, y: 14, w: 692, h: 130, title: '角色 A', titleY: 22 },
+      { id: 'lane2', x: 14, y: 160, w: 692, h: 130, title: '角色 B', titleY: 22 },
+      { id: 'lane3', x: 14, y: 306, w: 692, h: 130, title: '角色 C', titleY: 22 }
+    ],
+    boxes: [
+      { id: 'a', x: 110, y: 50, w: 150, h: 62, fill: 'mint', label: '第一步' },
+      { id: 'b', x: 110, y: 196, w: 150, h: 62, fill: 'violet', label: '第二步' },
+      { id: 'c', x: 110, y: 342, w: 150, h: 62, fill: 'pink', label: '第三步' }
+    ],
+    arrows: [
+      { from: 'a@bottom', to: 'b@top', shape: 'line' },
+      { from: 'b@bottom', to: 'c@top', shape: 'line', label: '交给', at: [203, 304], anchor: 'start' }
+    ]
+  },
+  // 漏斗 · 四段：trapezoid 居中堆叠，宽度按约 0.76 倍递减使下缘与下一段上缘连续
+  funnel4: {
+    boxes: [
+      { id: 's1', x: 160, y: 76, w: 400, h: 64, fill: 'violet', shape: 'trapezoid', label: '第一段', value: '量级' },
+      { id: 's2', x: 208, y: 154, w: 304, h: 64, fill: 'sky', shape: 'trapezoid', label: '第二段' },
+      { id: 's3', x: 244, y: 232, w: 232, h: 64, fill: 'mint', shape: 'trapezoid', label: '第三段' },
+      { id: 's4', x: 272, y: 310, w: 176, h: 64, fill: 'amber', shape: 'trapezoid', label: '第四段' }
+    ],
+    arrows: [
+      { from: 's1@bottom', to: 's2@top', shape: 'line', label: '转化', at: [378, 150], anchor: 'start' },
+      { from: 's2@bottom', to: 's3@top', shape: 'line' },
+      { from: 's3@bottom', to: 's4@top', shape: 'line' }
+    ]
   }
 };

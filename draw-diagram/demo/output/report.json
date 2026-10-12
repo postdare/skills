@@ -4,8 +4,8 @@
   "viewports": [
     {
       "width": 1200,
-      "frames": 8,
-      "drawn": 8,
+      "frames": 13,
+      "drawn": 13,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -53,6 +53,36 @@
         },
         {
           "key": "order-data-model",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "approval-swimlane",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-class",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "conversion-funnel",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "layered-architecture",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "priority-matrix",
           "drawn": true,
           "errors": [],
           "hints": []
@@ -62,8 +92,8 @@
     },
     {
       "width": 390,
-      "frames": 8,
-      "drawn": 8,
+      "frames": 13,
+      "drawn": 13,
       "errors": 0,
       "hints": 0,
       "items": [
@@ -111,6 +141,36 @@
         },
         {
           "key": "order-data-model",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "approval-swimlane",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "order-class",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "conversion-funnel",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "layered-architecture",
+          "drawn": true,
+          "errors": [],
+          "hints": []
+        },
+        {
+          "key": "priority-matrix",
           "drawn": true,
           "errors": [],
           "hints": []

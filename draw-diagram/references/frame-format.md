@@ -68,6 +68,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 - `x/y` locate the top-left corner of the bounding box; `w/h` are positive dimensions. `r` overrides the corner radius of a `rect`.
 - `fill` is a named `Diagram.fills` color or a CSS color. Named families are `mint`, `pink`, `violet`, `sky`, `amber`, each with `Soft` and `Pale` variants, plus `gray`. Omitted fill uses mint.
 - `icon` adds a small line pictogram at the top of the box: `database`（存储）、`queue`（消息队列）、`user`（人/角色）、`cloud`（外部系统）、`clock`（定时/调度）. The label shifts down accordingly; budget `h ≥ 80` for icon + label, more with a `value`. Icons are pure visual vocabulary and never enter `content`.
+- `fields?: string[]` and `methods?: string[]` turn the box into a UML-style class box: the label moves to the top, a divider follows, then left-aligned member rows, another divider, then the method rows. Layout: label at `y+24`, first divider at `y+38`, rows at `y+58 + i*20` (13px); budget `h ≥ 67 + 20 × (行数)`. Members are semantic: `content` nodes must declare the same arrays (whitespace-normalized, elementwise). Compartments render only on main boxes and do not combine with `value` or `icon`.
 - `label` supports `\n`; `value` adds a smaller second line. Numeric zero renders. Keep line wrapping intentional.
 - `error`, `ok` and `warn` add a badge; `muted` adds gray fill and dashed outline. `dim: true` reduces opacity independently.
 - `size: "sm"` is for an illustration only: smaller text/corners, no value or badge. It is exempt from semantic node comparison and cannot satisfy a required content node.
@@ -84,6 +85,7 @@ Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and
 | `ellipse` | Ellipse | Start/end terminator | `r` ignored |
 | `initial` | Filled dot | State-machine initial pseudostate | No label/value/badge; keep `w = h` ≈ 24; the matching content node carries an empty label |
 | `final` | Bullseye (ring + filled core) | State-machine final pseudostate | Same rules as `initial` |
+| `trapezoid` | Trapezoid: top edge full width, bottom edge inset 12% per side | Funnel stage | Text must clear the slanted outline like diamond/ellipse; stack with decreasing widths so adjacent stages' edges line up visually |
 
 Shape changes the outline, the usable text area, the anchor points and the badge position, while `x/y/w/h` stay the bounding box every other computation uses:
 

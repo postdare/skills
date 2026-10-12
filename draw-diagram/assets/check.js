@@ -33,6 +33,21 @@
       const gradient = Math.hypot(dx / half.w ** 2, dy / half.h ** 2);
       return gradient ? (1 - radial) * radial / gradient : Math.min(half.w, half.h);
     }
+    if (shape === 'trapezoid') {
+      // 梯形：上边缘全宽，下边缘两侧各内缩 w*0.12。点到四条边取朝内法线的垂直距离，最小值即 clearance
+      const points = outline(shape, frame);
+      let best = Infinity;
+      for (let index = 0; index < points.length; index++) {
+        const a = points[index];
+        const b = points[(index + 1) % points.length];
+        const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = -(b.y - a.y) / length;
+        const ny = (b.x - a.x) / length;
+        const inward = (center.x - a.x) * nx + (center.y - a.y) * ny > 0 ? 1 : -1;
+        best = Math.min(best, inward * ((p.x - a.x) * nx + (p.y - a.y) * ny));
+      }
+      return best;
+    }
     if (shape === 'pill') {
       const spine = spineOf(frame);
       const u = Math.max(spine.x1, Math.min(p.x, spine.x2));
@@ -53,6 +68,10 @@
       return { x: center.x + half.w * Math.cos(angle), y: center.y + half.h * Math.sin(angle) };
     });
     if (shape === 'diamond') return [{ x: center.x, y: frame.top }, { x: frame.right, y: center.y }, { x: center.x, y: frame.bottom }, { x: frame.left, y: center.y }];
+    if (shape === 'trapezoid') {
+      const inset = (frame.right - frame.left) * 0.12;
+      return [{ x: frame.left, y: frame.top }, { x: frame.right, y: frame.top }, { x: frame.right - inset, y: frame.bottom }, { x: frame.left + inset, y: frame.bottom }];
+    }
     if (shape === 'pill') {
       const spine = spineOf(frame);
       const caps = spine.y1 === spine.y2
@@ -93,7 +112,7 @@
     const height = slide.h || 450;
     const boxes = [...svg.querySelectorAll('.slide-box')].map(g => ({
       id: g.dataset.id, shape: g.dataset.shape || 'rect', frame: rectOf(g.querySelector('.slide-shape')),
-      texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value')], badge: g.querySelector('.slide-badge-dot'), badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm')
+      texts: [...g.querySelectorAll('.slide-box-label, .slide-box-value, .slide-box-member')], badge: g.querySelector('.slide-badge-dot'), badgeText: g.querySelector('text.slide-badge'), small: g.classList.contains('slide-box--sm')
     }));
     const groups = [...svg.querySelectorAll('.slide-group')].map(g => ({ id: g.dataset.id, frame: rectOf(g.querySelector('.slide-shape')), title: g.querySelector('.slide-group-title'), card: g.querySelector('.slide-card') }));
     const paths = [...svg.querySelectorAll('.slide-arrow')];
@@ -225,6 +244,14 @@
       for (const field of ['label', 'value']) {
         if (normalize(shape[field]) !== normalize(node[field])) {
           errors.push(`Different ${field}: ${node.id}; content “${node[field] ?? ''}”, diagram “${shape[field] ?? ''}”`);
+        }
+      }
+      // fields/methods 数组逐元素比对（去全部空白）；未声明与空数组等价
+      for (const list of ['fields', 'methods']) {
+        const inDiagram = (shape[list] || []).map(normalize);
+        const inContent = (node[list] || []).map(normalize);
+        if (inDiagram.length !== inContent.length || inDiagram.some((item, index) => item !== inContent[index])) {
+          errors.push(`Different ${list}: ${node.id}; content [${(node[list] || []).join(', ')}], diagram [${(shape[list] || []).join(', ')}]`);
         }
       }
       if (statusOf(shape) !== statusOf(node)) {
