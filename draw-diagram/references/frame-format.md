@@ -8,7 +8,7 @@ A standalone JSON document is `{ "title": "…", "frames": [frame, …] }`. Each
 - `title`: accessible title and preview heading.
 - `note?`: supporting preview prose, separate from the SVG.
 - `content`: authoritative `{nodes, edges}` data.
-- `diagram`: manually composed geometry described below.
+- `diagram`: standard-sequence layout directive or manually composed geometry described below.
 
 Keep `content` independent of layout: changing wording, status or relationships changes content first; moving a box changes only diagram coordinates. JSON contains plain data, not function calls. In JavaScript authoring, copy a `DIAGRAM_TEMPLATES` object or use `Diagram.merge`; then serialize the resulting object for the build command.
 独立工具输入为 UTF-8 JSON，不含 JS 调用：
@@ -45,7 +45,17 @@ The status must match exactly; `error`, `ok`, `warn` and `muted` are supported v
 
 Edges match by endpoint IDs, whitespace-normalized label, kind and start, with multiplicity preserved. Parallel edges with different labels are distinct, and repeated identical edges require repeated arrows. Omitted kind means `flow`; `blocked` must match explicitly. Missing and extra main arrows are errors, including label/kind differences.
 
+Source fidelity is a separate review: semantic checks compare drawing to `content`, not `content` to the user's request or protocol source. Review that mapping and the actual final PNG independently of `report.json`.
+
 ## Diagram
+
+### Standard sequence directive
+
+Use `"diagram": {"layout": "sequence"}` for fixed participants with a strict message timeline. Before layout, fix `content.nodes` in participant-column order (left to right) and `content.edges` in message order (top to bottom). Endpoints remain plain node IDs; equal `from`/`to` is a self-message. `flow` (default), `reply` and `async` retain their message meaning.
+
+The existing build/render pipeline expands this directive into ordinary `{w,h,boxes,lifelines,arrows}` geometry. It computes canvas/header sizes, label wrapping and clearance, message spacing and self-loop bends while preserving every participant, message, label, value, status and kind. The source document retains the directive; the preview embeds computed geometry. Write only semantic content and the directive: no manual `x/y`, `bend`, `at`, `boxes/arrows` or optional decorations. Use manual geometry instead for advanced/custom sequences; existing manually authored diagrams are unchanged.
+
+### Manual geometry
 
 Coordinates are SVG user units. Default canvas is 720×450; set positive `w` and `h` for another canvas. Positions are absolute even inside groups: groups do not transform their contents or establish clipping.
 

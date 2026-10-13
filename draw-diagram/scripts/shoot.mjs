@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Capture a generated or integrated diagram preview, export SVGs and fail incomplete/error reports.
-// Usage: node shoot.mjs <preview-url> <output-directory>
+// Usage: node shoot.mjs <preview-url> <output-directory> [--widths=1200,390] [--check-only]
+// --widths: viewport widths to verify (default 1200); add 390 only when mobile display matters.
+// --check-only: run geometry/semantic checks and write report.json without screenshots or SVG export.
 // Requires Node >= 22 (built-in WebSocket) and a local Chrome/Edge/Chromium (override with BROWSER).
 // The preview exposes __diagramCheck and __diagramStyle.
 import { spawn } from 'node:child_process';
@@ -9,9 +11,19 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-const [url, out] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const checkOnly = args.includes('--check-only');
+const widthsArg = args.find(arg => arg.startsWith('--widths='));
+const widths = widthsArg
+  ? widthsArg.slice('--widths='.length).split(',').map(Number)
+  : [1200];
+if (!widths.length || widths.some(width => !Number.isInteger(width) || width <= 0)) {
+  console.error('--widths must be a comma-separated list of positive integers');
+  process.exit(2);
+}
+const [url, out] = args.filter(arg => !arg.startsWith('--'));
 if (!url || !out) {
-  console.error('Usage: node shoot.mjs <preview-url> <output-directory>');
+  console.error('Usage: node shoot.mjs <preview-url> <output-directory> [--widths=1200,390] [--check-only]');
   process.exit(2);
 }
 
@@ -133,7 +145,7 @@ try {
 
   let failed = false;
   const reports = [];
-  for (const width of [1200, 390]) {
+  for (const width of widths) {
     await cdp.send('Emulation.setDeviceMetricsOverride',
       { width, height: 900, deviceScaleFactor: 2, mobile: width < 500 }, sessionId);
     await cdp.send('Page.navigate', { url }, sessionId);
@@ -149,25 +161,31 @@ try {
       if (!item.drawn) { console.log('  ' + item.key + ': not drawn'); continue; }
       console.log('  ' + item.key + ': ' + (item.errors.length ? item.errors.join('; ') : 'pass') +
         (item.hints.length ? ' [hints] ' + item.hints.join('; ') : ''));
+      if (item.geometry && item.semantic) {
+        console.log('    geometry: errors ' + item.geometry.errors.length + ', hints ' + item.geometry.hints.length +
+          '; semantic: errors ' + item.semantic.errors.length + ', hints ' + item.semantic.hints.length);
+      }
     }
-    const keys = await evaluate(cdp, sessionId,
-      "[...document.querySelectorAll('.preview-frame')].filter(frame => frame.querySelector('svg.slide')).map(frame => frame.dataset.key)");
-    for (const key of keys) {
-      if (!/^[a-zA-Z0-9_-]+$/.test(key)) throw new Error('Unsafe frame id: ' + key);
-      const { clip, svg } = await evaluate(cdp, sessionId, `(k => {
-        const frame = [...document.querySelectorAll('.preview-frame')].find(element => element.dataset.key === k);
-        const canvas = frame.querySelector('.preview-slide');
-        canvas.scrollIntoView({ block: 'start' });
-        const r = canvas.getBoundingClientRect();
-        const copy = canvas.querySelector('svg.slide').cloneNode(true);
-        const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-        if (typeof window.__diagramStyle !== 'string' || !window.__diagramStyle) throw new Error('Preview must expose its diagram CSS as window.__diagramStyle');
-        style.textContent = window.__diagramStyle; copy.prepend(style);
-        return { clip: { x: r.x, y: r.y + scrollY, width: r.width, height: r.height }, svg: new XMLSerializer().serializeToString(copy) };
-      })(${JSON.stringify(key)})`);
-      const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 1 } }, sessionId);
-      await fs.writeFile(path.join(out, key + '-' + width + '.png'), Buffer.from(shot.data, 'base64'));
-      if (width === 1200) await fs.writeFile(path.join(out, key + '.svg'), svg);
+    if (!checkOnly) {
+      const keys = await evaluate(cdp, sessionId,
+        "[...document.querySelectorAll('.preview-frame')].filter(frame => frame.querySelector('svg.slide')).map(frame => frame.dataset.key)");
+      for (const key of keys) {
+        if (!/^[a-zA-Z0-9_-]+$/.test(key)) throw new Error('Unsafe frame id: ' + key);
+        const { clip, svg } = await evaluate(cdp, sessionId, `(k => {
+          const frame = [...document.querySelectorAll('.preview-frame')].find(element => element.dataset.key === k);
+          const canvas = frame.querySelector('.preview-slide');
+          canvas.scrollIntoView({ block: 'start' });
+          const r = canvas.getBoundingClientRect();
+          const copy = canvas.querySelector('svg.slide').cloneNode(true);
+          const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+          if (typeof window.__diagramStyle !== 'string' || !window.__diagramStyle) throw new Error('Preview must expose its diagram CSS as window.__diagramStyle');
+          style.textContent = window.__diagramStyle; copy.prepend(style);
+          return { clip: { x: r.x, y: r.y + scrollY, width: r.width, height: r.height }, svg: new XMLSerializer().serializeToString(copy) };
+        })(${JSON.stringify(key)})`);
+        const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...clip, scale: 1 } }, sessionId);
+        await fs.writeFile(path.join(out, key + '-' + width + '.png'), Buffer.from(shot.data, 'base64'));
+        if (width === widths[0]) await fs.writeFile(path.join(out, key + '.svg'), svg);
+      }
     }
   }
   await fs.writeFile(path.join(out, 'report.json'), JSON.stringify({ url, passed: !failed, viewports: reports }, null, 2) + '\n');

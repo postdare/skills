@@ -76,7 +76,15 @@ For a true inner cycle with source-required nodes, use normal-size boxes and inc
 
 Use it when the relationship is a **message exchange ordered in time** between fixed participants — protocol handshakes, request/response pairs, retry ladders. Time runs down the frame; each participant is a header box with a dashed lifeline, and every message is an arrow anchored to two lifelines.
 
-Start from `DIAGRAM_TEMPLATES.sequence` and replace its placeholders:
+### Standard sequence: semantic-only authoring
+
+The default is `diagram: {layout: "sequence"}` with authoritative `content.nodes` in left-to-right participant order and `content.edges` in strict message order. Freeze both from the source before layout; use plain node IDs for endpoints, including equal endpoints for self-messages, and preserve `flow`/`reply`/`async` kinds. The tool computes headers, lifelines, canvas, multiline label clearance and self-loop routing without changing normalized text or filtering messages.
+
+Only SKILL.md is needed for this path; run the same existing render command, then independently review source fidelity, reports and the actual PNG. No manual coordinates or optional decorations by default. Keep every source-required protocol action, redirect forwarding, parameter and relation; timing is not a reason to shorten the protocol. Advanced/custom requirements use the manual path below.
+
+### Manual sequence geometry
+
+For custom geometry or the advanced decorations below, start from `DIAGRAM_TEMPLATES.sequence` and replace its placeholders:
 
 ```js
 const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
@@ -85,7 +93,7 @@ const diagram = Diagram.merge(DIAGRAM_TEMPLATES.sequence, {
 });
 ```
 
-Rules that keep a sequence frame readable:
+Rules that keep a manually positioned sequence frame readable:
 
 - **The message `y` is the timeline.** Number the messages in source order and place them strictly increasing; ~46 units apart leaves room for a 14px label plus clearance.
 - **Anchor every message on lifelines** (`id@life:<y>`), never on box edges — a box anchor makes the arrow leave the participant header instead of the timeline.

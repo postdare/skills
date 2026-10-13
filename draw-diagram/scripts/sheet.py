@@ -21,6 +21,9 @@ def main():
     keys = [item['key'] for item in viewport['items'] if item['drawn']]
     if not keys:
         parser.error('report contains no rendered diagrams')
+    if len(keys) < 2:
+        print(f'single frame; sheet skipped ({args.width}px)')
+        return
     images = []
     for key in keys:
         if not key or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_' for c in key):

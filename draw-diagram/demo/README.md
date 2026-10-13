@@ -54,19 +54,10 @@
 ```bash
 SKILL="$HOME/.agents/skills/draw-diagram"
 OUT="$SKILL/demo/output"
-python3 "$SKILL/scripts/build.py" "$SKILL/demo/diagrams.json" --out "$OUT"
-python3 -m http.server 8891 --bind 127.0.0.1 --directory "$OUT"
+python3 "$SKILL/scripts/render.py" "$SKILL/demo/diagrams.json" --out "$OUT" --widths 1200,390
 ```
 
-另一个终端执行；服务已存在时直接复用，端口被其他服务占用时选一个可用端口，并同步更改 URL：
-
-```bash
-SKILL="$HOME/.agents/skills/draw-diagram"
-OUT="$SKILL/demo/output"
-node "$SKILL/scripts/shoot.mjs" http://127.0.0.1:8891/preview.html "$OUT"
-python3 "$SKILL/scripts/sheet.py" "$OUT"
-python3 "$SKILL/scripts/sheet.py" "$OUT" 390
-```
+一条命令完成构建、`file://` 截图与拼图；预览自包含，无需 HTTP 服务。
 
 本次实际运行直接用本仓库路径作为 `SKILL`，从技能目录调用构建、截图与导出工具：1200px 和 390px 都报告 18/18 已渲染、错误 0、提示 0、JS 报错无，最新两张审图表已查看；四形状帧另以独立的临时负例集核对过判定（菱形内接不足报「文字溢出」、扁菱形带角标报「角标出框」、外接框相叠而轮廓分离的菱形不报「框重叠」、走线穿过菱形空角不报「穿框」）。该 demo 证明工具与产物独立运行，不代表已测量不同模型遵循提示词的成功率。
 
@@ -86,3 +77,36 @@ python3 "$SKILL/scripts/sheet.py" "$OUT" 390
 输出到一个独立目录，交付自包含 SVG、预览、检查报告和最新审图表。
 以桌面细读为主要展示场景，同时提供 390px 截图并说明窄屏可读性限制。
 ```
+
+## 单帧速度棘轮
+
+这是技能维护的基准，不是每次绘图的额外步骤。可重复生成两个固定场景：`order`（默认）为「开始 → 提交订单 → 校验库存 → 创建订单 → 发起支付 → 支付结果判断；成功发货、失败关闭订单」，桌面单帧、8 节点/7 边；`oauth2` 为 OAuth2 authorization-code + PKCE (S256) 成功路径，桌面单帧、四参与者（用户/浏览器、客户端、授权服务器、资源服务器），公共客户端且无 client_secret。
+
+OAuth2 范围保留客户端生成 state/code_verifier/code_challenge、浏览器授权请求、用户登录与同意、code+state 经浏览器重定向转交客户端、客户端校验 state 并用 code+code_verifier 兑换 token、授权服务器校验 PKCE 后返回 access_token、Bearer 资源请求与资源返回。区分浏览器重定向、token 交换与资源访问；按 RFC 6749/7636，不扩展 OIDC、refresh token 或错误分支，不以减少协议步骤满足耗时门槛。
+
+标准时序新稿只写 `content.nodes/edges` 和 `diagram: {layout: "sequence"}`，参与者列与消息顺序先对照来源确定；沿用一条 `render.py` 命令与完整验收。上方历史手工/高级 demo 的图稿和产物保持原样。
+
+```bash
+python3 "$SKILL/scripts/bench.py" --out /tmp/draw-diagram-benchmark-01
+python3 "$SKILL/scripts/bench.py" --scenario oauth2 --out /tmp/draw-diagram-oauth2-benchmark-01
+```
+
+需已配置 `opencode-go/deepseek-flash` 的 OMP CLI。输出目录必须全新；默认串行运行 3 个独立会话，保持默认思考配置，任一次进程失败、模型不符、输出检查失败或端到端超过 300 秒，立即停止且退出非零。`--scenario order|oauth2` 选择固定任务；`--runs`、`--model`、`--ceiling` 可调整实验参数，但同模型速度验收保持默认模型、思考配置和 300 秒门槛。
+
+`summary.json` 记录场景、UTC 开始时间、实际墙钟、请求/实际模型以及 `skill_sha256`、`toolchain_sha256`、`prompt_sha256`，便于区分指令、代码与任务变化；阈值按未取整的墙钟比较。各次 `events.jsonl` 为带单调时钟时间戳的调用记录，`sessions/` 与 `stderr.log` 保留会话和错误证据。墙钟包含 OMP 启动、模型思考、工具、审图和最终回复，不用文件 mtime 或子 agent 自报时间替代。
+
+自动检查 `viewports[].items[].geometry` 与 `semantic` 两份结果均已执行、零错误，JS 无错，图稿与交付文件存在；`null` 不能通过。图稿可以位于工作目录或 `out/`，不锁定节点/消息的精确措辞。报告验证、来源忠实度、视觉审阅是三个独立验收项：对照场景请求核对全部业务/协议关系及顺序，并亲自查看每次最终 PNG；自动通过不代表来源语义或视觉通过。三次连续运行只有各项都通过且各次 ≤300 秒才接受。
+
+2026-10-13 下单场景历史连续三次实测 111.839/84.086/93.121 秒，平均 96.349 秒、最慢 111.839 秒。三张 PNG 均已审阅，8 节点/7 边的业务关系完整，几何/语义/JS 零错误、零提示。基准用默认思考配置，包含进程退出；未切换模型或删减验收。
+
+上述下单历史记录不代表标准时序性能。2026-10-13 OAuth2 PDCA：手工基准 955.769 秒、39 轮模型调用、10 次渲染；增加语义输入自动排版后，第一轮虽三次计时低于 300 秒，但一张图省略了 S256 的 Base64URL 变换，因此未接受。补上 RFC 7636 语义核对后，第二轮连续三次 98.816/123.318/51.748 秒，平均 91.294 秒；四参与者、13/11/11 条消息，协议源义与最终 PNG 均已独立审阅，几何/语义/JS 零错误。未切换模型、降低思考配置或减少协议步骤。
+
+排版边界回归：
+
+```bash
+python3 -m unittest discover -s "$SKILL/scripts" -p 'test_sequence.py' -v
+```
+
+回归覆盖消息时间顺序跨越自调用、非法参与者引用，以及真实渲染中的长自调用、末列自调用、多行标题和数值零。真实渲染用例需 Node ≥22 与本机 Chromium。旧手工 OAuth2 图仍通过原工具链；新版本下单场景另实测 52.614 秒，仍为普通流程图而非时序图。
+
+计时门槛目前覆盖上述两个固定任务及标准时序路径，不外推到高级 Alt/Par、自定义手工布局、复杂泳道或 ER 图，也不保证模型服务的未来延迟。每次修正先保留未通过的证据，全部质量项通过后才接受三次连续计时结果。

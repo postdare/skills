@@ -5,6 +5,11 @@ import html
 import json
 from pathlib import Path
 
+if __package__:
+    from .sequence import layout_sequence
+else:
+    from sequence import layout_sequence
+
 SKILL = Path(__file__).resolve().parents[1]
 
 PREVIEW_STYLE = """
@@ -43,14 +48,15 @@ PREVIEW_SCRIPT = """
     const svg = article.querySelector('svg.slide');
     const result = article.querySelector('.preview-check');
     let errors = [], hints = [];
+    let geometry = null, semantic = null;
     if (!svg) errors.push('Missing rendered diagram: ' + frame.id);
     else {
-      const geometry = DiagramCheck.geometry(svg, frame.diagram);
-      const semantic = DiagramCheck.semantic(frame.diagram, frame.content);
+      geometry = DiagramCheck.geometry(svg, frame.diagram);
+      semantic = DiagramCheck.semantic(frame.diagram, frame.content);
       errors = [...geometry.errors, ...semantic.errors]; hints = [...geometry.hints, ...semantic.hints];
     }
     report.errors += errors.length; report.hints += hints.length;
-    report.items.push({ key: frame.id, drawn: Boolean(svg), errors, hints });
+    report.items.push({ key: frame.id, drawn: Boolean(svg), geometry, semantic, errors, hints });
     for (const [level, lines] of [['error', errors], ['hint', hints]]) for (const message of lines) {
       const li = document.createElement('li'); li.dataset.level = level; li.textContent = message; result.append(li);
     }
@@ -99,6 +105,15 @@ def build(source, output):
         for field in ('nodes', 'edges'):
             if not isinstance(frame['content'].get(field), list):
                 raise ValueError('content.' + field + ' must be an array: ' + key)
+        if 'layout' in frame['diagram']:
+            if frame['diagram']['layout'] != 'sequence':
+                raise ValueError('unsupported diagram.layout: ' + key)
+            if set(frame['diagram']) != {'layout'}:
+                raise ValueError('sequence layout cannot include manual diagram fields: ' + key)
+            try:
+                frame['diagram'] = layout_sequence(frame['content'])
+            except ValueError as error:
+                raise ValueError(key + ': ' + str(error)) from error
     assets = SKILL / 'assets'
     css = (assets / 'diagram.css').read_text(encoding='utf-8')
     renderer = (assets / 'diagram.js').read_text(encoding='utf-8')
