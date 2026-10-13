@@ -22,6 +22,7 @@ Geometry diagnostics come from `assets/check.js`; renderer routes and badge comp
 | Path crosses a box (`穿框`) | Change anchor sides, move the boxes, or explicitly route an elbow using `via`. Endpoint boxes are exempt; other main and illustration boxes are obstacles. |
 | Short edge (`短边`) | Separate the endpoints; do not hide a required relationship with an illustration-sized arrow. |
 | Almost-horizontal/vertical line is slanted (`斜线`) | Align anchor positions, accounting for box dimensions and ratios. A genuinely diagonal relationship is different from an accidental near-axis slant. |
+| Elbow segment does not meet its anchor squarely (`折线倾斜`) | The terminal run of an `elbow` must arrive along the anchor's axis. Put the last `via` point exactly on the anchor's x (for `@top`/`@bottom`) or y (for `@left`/`@right`); a `via` a few units off the box centre tilts only the last leg, which reads as a hairline skew. |
 | Arrowhead bends sharply (`箭头折角`) | Pick arrival/departure sides that suit the relative position. A mostly vertical displacement often needs top/bottom anchors rather than left/right. Allow a straight terminal approach and sufficient separation. |
 | Five-node cycle becomes a vertical segment with a hook | Use a shared ellipse and `orbit`, with bare endpoint IDs and node centers on the ring. Four-corner arc geometry does not generalize to arbitrary cycles. |
 | Unknown endpoint throws while rendering | Match IDs against both boxes and groups. Anchor references use `id@side:ratio`; orbit references use only the ID. |

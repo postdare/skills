@@ -727,6 +727,8 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
   const overlaps = (a, b, pad = 0) => a.left + pad < b.right && b.left + pad < a.right && a.top + pad < b.bottom && b.top + pad < a.bottom;
   const contains = (r, p, inset = 0) => p.x > r.left + inset && p.x < r.right - inset && p.y > r.top + inset && p.y < r.bottom - inset;
   const idOf = reference => reference.split('@')[0];
+  // 锚点方向表：折线末端必须沿锚点方向进入目标框（与渲染端 assets/diagram.js 的同名表一致）
+  const sides = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
 
   // 形状几何：一律用外接矩形 frame 表示；rect/pill 之外按解析式判断内缩、边界距离与外轮廓。
   // 渲染端 assets/diagram.js 用同一套规则决定锚点与角标，改一处必须同步另一处。
@@ -903,6 +905,21 @@ h1 { margin-bottom: 8px; } h2 { font-size: 20px; }
         if (turn > 25) errors.push(`箭头折角：${name} 末端转了 ${Math.round(turn)}°，箭头要落在直的一段上`);
       }
       if (points.some(p => p.x < -1 || p.y < -1 || p.x > width + 1 || p.y > height + 1)) errors.push(`越界：连线 ${name}`);
+      // 折线正交：elbow 的语义是「横平竖直」，末端必须沿锚点方向进入目标。
+      // 圆角在拐点处、不在末端，所以只量收尾一小段的航向，不会把正常圆角误判成倾斜。
+      if (arrow.shape === 'elbow') {
+        const side = String(arrow.to).split('@')[1]?.split(':')[0];
+        const expected = side && sides[side];
+        if (expected && length > 12) {
+          const probe = Math.min(20, length * 0.3);
+          const head = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
+          const tail = paths[index];
+          const heading = head(tail.getPointAtLength(length - probe), tail.getPointAtLength(length));
+          const want = Math.atan2(-expected.y, -expected.x);
+          const off = Math.abs(((heading - want) * 180 / Math.PI + 540) % 360 - 180);
+          if (off > 2) errors.push(`折线倾斜：${name} 末端偏离 ${side} 锚点方向 ${off.toFixed(1)}°，检查 via 点是否落在两端锚点所在的直线上`);
+        }
+      }
     });
     // 边标签按箭头顺序渲染：第 k 个标签属于第 k 支带 label 的箭头
     const owners = (slide.arrows || []).map((arrow, index) => (arrow.label ? index : null)).filter(index => index !== null);
